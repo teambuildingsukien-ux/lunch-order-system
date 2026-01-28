@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lunch Order Management System
 
-## Getting Started
+Hệ thống quản lý đặt cơm trưa tự động cho công ty với mô hình opt-out (mặc định ăn, chỉ báo khi nghỉ).
 
-First, run the development server:
+## 🎯 Features (MVP v1.0)
+
+- ✅ **Auth:** Magic link login (Supabase)
+- ✅ **Employee Dashboard:** Opt-out flow, countdown timer, order history
+- ✅ **Kitchen Dashboard:** Real-time orders summary, filtering
+- ✅ **Manager Dashboard:** KPIs (waste rate, cost savings), trend charts
+- ✅ **Admin Panel:** User management, CSV bulk import
+- ✅ **Automation:** Daily cron jobs (create orders, lock, Telegram notifications)
+
+## 🛠️ Tech Stack
+
+- **Frontend:** Next.js 15 (App Router), TypeScript, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL, Auth, Storage)
+- **Hosting:** Vercel
+- **Notifications:** Telegram Bot API + SendGrid (email fallback)
+
+## 📦 Setup
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment Variables
+
+Copy `.env.local.example` to `.env.local` và điền values:
+
+```bash
+cp .env.local.example .env.local
+```
+
+**Required ENV vars:**
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key
+- `DATABASE_URL` - PostgreSQL connection string
+- `TELEGRAM_BOT_TOKEN` - Telegram Bot token
+- `SENDGRID_API_KEY` - SendGrid API key
+
+### 3. Database Setup (Supabase)
+
+**Option A: Using Supabase CLI (Local development)**
+
+```bash
+npx supabase init
+npx supabase start
+npx supabase db push
+npx supabase db seed
+```
+
+**Option B: Using Supabase Dashboard (Cloud)**
+
+1. Create Supabase project
+2. Go to SQL Editor
+3. Run migration files từ `supabase/migrations/` theo thứ tự:
+   - `20260121000001_create_users.sql`
+   - `20260121000002_create_orders.sql`
+   - `20260121000003_create_notification_logs.sql`
+   - `20260121000004_create_import_logs.sql`
+   - `20260121000005_create_triggers.sql`
+4. Run seed file: `supabase/seed/seed.sql`
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+/app                    # Next.js App Router pages
+  /api                  # API routes
+  /dashboard            # Dashboard pages (employee/kitchen/manager)
+  /admin                # Admin panel
+/components             # React components
+  /ui                   # Shadcn UI components
+  /dashboard            # Dashboard-specific components
+ /admin                # Admin-specific components
+/lib                   # Utilities
+  /supabase            # Supabase clients
+  /utils               # Helper functions
+  /telegram            # Telegram Bot client
+/types                 # TypeScript types
+/hooks                 # Custom React hooks
+/supabase              # Database
+  /migrations          # SQL migration files
+  /seed                # Seed data
+```
 
-## Learn More
+## 🧪 Testing
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Unit tests
+npm run test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Integration tests
+npm run test:integration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# E2E tests (manual for MVP)
+# Follow test cases in planning docs
+```
 
-## Deploy on Vercel
+## 📚 Documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Planning documents tại `.agent/brain/`:
+- `00-Project-Map.md` - System overview
+- `01-Product-Brief.md` - Business requirements
+- `07-DataModel-ERD.md` - Database schema
+- `08-API-Contract.md` - API specifications
+- `IMPLEMENTATION-PLAN.md` - Development roadmap
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Deployment
+
+**Vercel (Automatic):**
+
+```bash
+git push origin main  # Auto-deploy to production
+git push origin develop  # Auto-deploy to staging
+```
+
+**Environment:**
+- Production: `https://lunch.company.vn`
+- Staging: `https://staging.lunch-order.company.vn
+
+## 📝 Sprint Progress
+
+- [x] Sprint 1 Day 1-2: Project setup ✅
+- [ ] Sprint 1 Day 3-4: Auth + Database
+- [ ] Sprint 1 Day 5-6: Employee Dashboard
+- [ ] Sprint 1 Day 7-8: Kitchen Dashboard
+- [ ] Sprint 2: Analytics + Admin
+- [ ] Sprint 3: UAT + Production deploy
+
+## 📄 License
+
+Internal company project - Proprietary

@@ -1,26 +1,85 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Fix for native Select options in Dark Mode */
+.dark option {
+    background-color: #1e293b;
+    color: white;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Tailwind v4 Theme Configuration */
+@theme {
+    /* Custom Colors */
+    --color-primary: #b24700;
+    --color-background-light: #f8f7f5;
+    --color-background-dark: #23170f;
+
+    /* Custom Font Family */
+    --font-family-display: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Custom Border Radius */
+    --radius: 0.25rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-full: 9999px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Global Styles */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--font-family-display);
+}
+
+/* Custom overlay gradient for login page */
+.custom-overlay {
+    background: linear-gradient(135deg, rgba(178, 71, 0, 0.7) 0%, rgba(35, 23, 15, 0.4) 100%);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #8d715e;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary);
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+input,
+select,
+textarea {
+    transition-property: color, background-color, border-color, transform, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* Marquee animation for announcement */
+@keyframes marquee {
+    0% {
+        transform: translateX(100%);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.animate-marquee {
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee 20s linear infinite;
+}
+
+.animate-marquee:hover {
+    animation-play-state: paused;
 }

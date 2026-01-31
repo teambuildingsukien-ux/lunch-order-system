@@ -15,6 +15,7 @@ import CookingDaysSettingModal from './overview/CookingDaysSettingModal';
 import ActivityHistoryModal from './overview/ActivityHistoryModal';
 import ActivityLogsPage from './activitylogs/ActivityLogsPage';
 import AutoResetSettingModal from './overview/AutoResetSettingModal';
+import ForecastCards from './ForecastCards';
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -592,7 +593,7 @@ export default function AdminManagerDashboard() {
                         {activeSidebarItem === 'dashboard' && (
                             <div className="space-y-8">
                                 {/* Stats Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                                     {/* Card 1: Tổng đăng ký */}
                                     <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm">
                                         <div className="flex justify-between items-start mb-4">
@@ -632,6 +633,9 @@ export default function AdminManagerDashboard() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* NEW: Forecast Cards for Tomorrow */}
+                                    <ForecastCards />
                                 </div>
 
                                 {/* Chart & Quick Actions */}

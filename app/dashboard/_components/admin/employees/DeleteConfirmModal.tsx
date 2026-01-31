@@ -50,23 +50,20 @@ export default function DeleteConfirmModal({ isOpen, onClose, onSuccess, employe
                 });
             }
 
-            // Soft delete: Mark user as inactive
-            // (Safer than hard delete - preserves order history)
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({
-                    is_active: false,
-                    deleted_at: new Date().toISOString()
-                })
-                .eq('id', employee.id);
-
-            if (updateError) throw updateError;
-
-            // Remove from meal groups
+            // HARD DELETE: Xóa hẳn user khỏi database
+            // Remove from meal groups FIRST (foreign key constraint)
             await supabase
                 .from('user_meal_groups')
                 .delete()
                 .eq('user_id', employee.id);
+
+            // Delete permanently from users table
+            const { error: updateError } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', employee.id);
+
+            if (updateError) throw updateError;
 
             // Success!
             onSuccess();
@@ -120,10 +117,10 @@ export default function DeleteConfirmModal({ isOpen, onClose, onSuccess, employe
                     </div>
 
                     {/* Warning */}
-                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                        <p className="text-xs text-orange-700 dark:text-orange-400">
-                            <Icon name="info" className="text-[16px] inline mr-1" />
-                            Thao tác này sẽ vô hiệu hóa tài khoản. Lịch sử đơn hàng của nhân viên sẽ được giữ lại.
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-500 dark:border-red-800 rounded-lg">
+                        <p className="text-xs text-red-700 dark:text-red-400 font-semibold">
+                            <Icon name="warning" className="text-[16px] inline mr-1" />
+                            ⚠️ Thao tác này sẽ XÓA VĨNH VIỄN tài khoản khỏi hệ thống. Không thể hoàn tác!
                         </p>
                     </div>
                 </div>

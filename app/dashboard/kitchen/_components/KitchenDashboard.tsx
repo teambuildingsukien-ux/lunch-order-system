@@ -486,7 +486,7 @@ export default function KitchenDashboard({ hideHeader = false }: KitchenDashboar
             </main>
 
             <footer className="w-full py-8 px-6 lg:px-20 text-center text-slate-400 text-xs">
-                <p>© 2026 Cơm Ngon Kitchen Dashboard. Hệ thống quản lý suất ăn doanh nghiệp.</p>
+                <p>© 2026 Cơm Ngon Kitchen Dashboard. Hệ thống quản lý suất ăn doanh nghiệp. • BY Thân Công Hải</p>
             </footer>
         </div>
     );

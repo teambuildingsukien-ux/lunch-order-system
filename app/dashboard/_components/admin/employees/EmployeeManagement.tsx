@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import AddEmployeeModal from './AddEmployeeModal';
 import EditEmployeeModal from './EditEmployeeModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import ImportEmployeeModal from './ImportEmployeeModal';
 
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
     <span className={`material-symbols-outlined ${className}`}>{name}</span>
@@ -44,6 +45,7 @@ export default function EmployeeManagement() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
     const [stats, setStats] = useState({ total: 0, active: 0, groups: 0, departments: 0 });
@@ -206,13 +208,22 @@ export default function EmployeeManagement() {
                             placeholder="Tìm kiếm tên, mã nhân viên, phòng ban..."
                         />
                     </div>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="cursor-pointer flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
-                    >
-                        <Icon name="person_add" className="text-[20px]" />
-                        <span>Thêm nhân viên</span>
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="cursor-pointer flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold text-sm shadow-lg shadow-green-600/20 hover:bg-green-700 transition-all"
+                        >
+                            <Icon name="upload_file" className="text-[20px]" />
+                            <span>Import Excel</span>
+                        </button>
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            className="cursor-pointer flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+                        >
+                            <Icon name="person_add" className="text-[20px]" />
+                            <span>Thêm nhân viên</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Table */}
@@ -445,6 +456,16 @@ export default function EmployeeManagement() {
                     />
                 </>
             )}
+
+            <ImportEmployeeModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onSuccess={() => {
+                    fetchEmployees();
+                    fetchStats();
+                    fetchMealGroups();
+                }}
+            />
         </div>
     );
 }

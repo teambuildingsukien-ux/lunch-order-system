@@ -219,6 +219,51 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
 
             if (error) throw error;
 
+            // Get current deadline for penalty tracking
+            const { data: deadlineSettings } = await supabase
+                .from('system_settings')
+                .select('key, value')
+                .in('key', ['registration_deadline', 'registration_deadline_offset']);
+
+            const deadlineTime = deadlineSettings?.find(s => s.key === 'registration_deadline')?.value || '05:00';
+            const deadlineOffsetDays = parseInt(deadlineSettings?.find(s => s.key === 'registration_deadline_offset')?.value || '1');
+
+            // Calculate actual deadline datetime for THIS meal (deadline is for NEXT day's meal)
+            const targetDate = new Date(today);
+            targetDate.setDate(targetDate.getDate() + deadlineOffsetDays);
+            const deadlineDateTime = new Date(targetDate.toISOString().split('T')[0] + 'T' + deadlineTime + ':00+07:00');
+
+            const currentTime = new Date();
+            const isLateAction = currentTime > deadlineDateTime && newStatus === 'not_eating';
+
+            // Enhanced log activity for audit trail and penalty tracking
+            await supabase.from('activity_logs').insert({
+                action: newStatus === 'eating' ? 'meal_registration' : 'meal_cancellation',
+                performed_by: profile.id,
+                target_type: 'order',
+                target_id: profile.id,
+                details: {
+                    // Original fields
+                    date: today,
+                    status: newStatus,
+                    previous_status: orderStatus,
+
+                    // NEW: Penalty system support
+                    action_timestamp: currentTime.toISOString(),
+                    deadline: deadlineDateTime.toISOString(),
+                    is_late: isLateAction,
+                    minutes_late: isLateAction ? Math.floor((currentTime.getTime() - deadlineDateTime.getTime()) / 60000) : 0,
+
+                    // User context
+                    user_name: userName,
+                    user_email: user.email,
+
+                    // Optional: System context (for audit)
+                    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+                    platform: typeof navigator !== 'undefined' ? navigator.platform : 'unknown'
+                }
+            });
+
             setOrderStatus(newStatus);
             showToast(
                 `✅ Đã ${newStatus === 'eating' ? 'đăng ký ăn' : 'hủy suất ăn'}!`,

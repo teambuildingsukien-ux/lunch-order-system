@@ -95,13 +95,25 @@ export default function LoginScreen() {
                     aria-label="Blurred image of a healthy office meal with fresh vegetables"
                 />
 
-                {/* Orange Overlay with gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#b24700]/70 to-[#23170f]/40 flex flex-col justify-center px-20">
-                    <div className="max-w-md">
-                        {/* Logo */}
-                        <div className="mb-6">
+                {/* Animated Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#b24700]/80 via-[#d35400]/60 to-[#23170f]/50 animate-gradient" />
+
+                {/* Floating Particles Effect */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-[20%] left-[10%] w-2 h-2 bg-white/30 rounded-full animate-float-slow" />
+                    <div className="absolute top-[60%] left-[30%] w-3 h-3 bg-white/20 rounded-full animate-float-medium" />
+                    <div className="absolute top-[40%] right-[20%] w-2 h-2 bg-white/25 rounded-full animate-float-fast" />
+                    <div className="absolute bottom-[30%] right-[15%] w-4 h-4 bg-white/15 rounded-full animate-float-slow" />
+                    <div className="absolute top-[70%] left-[60%] w-2 h-2 bg-white/30 rounded-full animate-float-medium" />
+                </div>
+
+                {/* Main Content */}
+                <div className="absolute inset-0 flex flex-col justify-center px-20 z-10">
+                    <div className="max-w-md animate-fade-in-up">
+                        {/* Logo with pulse animation */}
+                        <div className="mb-8 animate-pulse-slow">
                             <svg
-                                className="text-white w-16 h-16"
+                                className="text-white w-20 h-20 drop-shadow-2xl"
                                 fill="none"
                                 viewBox="0 0 48 48"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -113,32 +125,49 @@ export default function LoginScreen() {
                             </svg>
                         </div>
 
-                        {/* Heading */}
-                        <h1 className="text-white text-5xl font-black leading-tight tracking-tight mb-4">
+                        {/* Heading with gradient text */}
+                        <h1 className="text-white text-5xl font-black leading-tight tracking-tight mb-6 drop-shadow-lg animate-slide-in-left">
                             Cơm Ngon
                         </h1>
 
-                        {/* Description */}
-                        <p className="text-white/90 text-xl font-medium leading-relaxed">
-                            Nâng tầm trải nghiệm bữa ăn công sở. Sức khỏe của bạn là ưu tiên hàng đầu của chúng tôi.
+                        {/* Description with updated text */}
+                        <p className="text-white/95 text-xl font-medium leading-relaxed mb-4 drop-shadow-md animate-slide-in-left" style={{ animationDelay: '0.1s' }}>
+                            Nâng tầm trải nghiệm bữa ăn Viet Vision. Sức khỏe của bạn là ưu tiên hàng đầu của chúng tôi.
                         </p>
 
-                        {/* Pagination indicators */}
-                        <div className="mt-10 flex gap-4">
-                            <div className="h-1 w-12 bg-white rounded-full transition-all" />
-                            <div className="h-1 w-4 bg-white/40 rounded-full transition-all hover:bg-white/60" />
-                            <div className="h-1 w-4 bg-white/40 rounded-full transition-all hover:bg-white/60" />
+                        {/* Additional info badge inline */}
+                        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20 animate-slide-in-left" style={{ animationDelay: '0.2s' }}>
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-ping" />
+                            <span className="text-white/90 text-sm font-semibold">
+                                Cung cấp hơn 100 suất ăn mỗi ngày
+                            </span>
+                        </div>
+
+                        {/* Pagination indicators with animation */}
+                        <div className="mt-12 flex gap-4 animate-slide-in-left" style={{ animationDelay: '0.3s' }}>
+                            <div className="h-1.5 w-14 bg-white rounded-full shadow-lg shadow-white/30 transition-all" />
+                            <div className="h-1.5 w-5 bg-white/40 rounded-full transition-all hover:bg-white/70 hover:w-14 cursor-pointer" />
+                            <div className="h-1.5 w-5 bg-white/40 rounded-full transition-all hover:bg-white/70 hover:w-14 cursor-pointer" />
                         </div>
                     </div>
                 </div>
 
-                {/* Decorative Badge */}
-                <div className="absolute bottom-10 left-10 flex items-center gap-3 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 transition-all hover:bg-white/15">
-                    <Utensils className="text-white w-6 h-6" />
-                    <span className="text-white text-sm font-semibold">
-                        Cung cấp hơn 5000 suất ăn mỗi ngày
-                    </span>
+                {/* Bottom Stats Badge with hover effect */}
+                <div className="absolute bottom-12 left-12 group z-20">
+                    <div className="flex items-center gap-4 bg-white/15 backdrop-blur-lg p-5 rounded-2xl border border-white/25 transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:shadow-2xl cursor-pointer">
+                        <div className="bg-white/20 p-3 rounded-xl group-hover:bg-white/30 transition-colors">
+                            <Utensils className="text-white w-7 h-7" />
+                        </div>
+                        <div>
+                            <p className="text-white text-lg font-bold">100+</p>
+                            <p className="text-white/80 text-xs font-medium">Suất ăn mỗi ngày</p>
+                        </div>
+                    </div>
                 </div>
+
+                {/* Decorative glow effect */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl animate-pulse-slow" />
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-yellow-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
             </div>
 
             {/* Right Side: Login Panel */}
@@ -275,7 +304,7 @@ export default function LoginScreen() {
                     {/* Bottom Bar */}
                     <div className="mt-auto pt-10 flex items-center justify-center gap-4">
                         <div className="text-[#8d715e] dark:text-gray-500 text-xs font-medium">
-                            © 2026 Cơm Ngon
+                            © 2026 Cơm Ngon • BY Thân Công Hải
                         </div>
                         <div className="w-1 h-1 bg-[#8d715e]/30 rounded-full" />
                         <button className="flex items-center gap-1 cursor-pointer hover:text-[#b24700] transition-colors text-xs font-bold text-[#8d715e]">

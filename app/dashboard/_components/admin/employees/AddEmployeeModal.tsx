@@ -96,136 +96,36 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess, mealGroup
         setIsSubmitting(true);
 
         try {
-            let finalMealGroupId = formData.mealGroupId;
-            let finalDepartment = formData.department === 'custom' ? customValues.department : formData.department;
-            const finalShift = formData.shift === 'custom' ? customValues.shift : formData.shift;
-
-            // Handle custom department creation
-            if (formData.department === 'custom') {
-                const { error: deptError } = await supabase
-                    .from('departments')
-                    .insert({ name: customValues.department })
-                    .single();
-
-                if (deptError && deptError.code !== '23505') { // Ignore unique constraint violation
-                    throw new Error(`Không thể tạo phòng ban mới: ${deptError.message}`);
-                }
-            }
-
-            let finalShiftId: string | null = null;
-
-            // Handle Custom Shift Creation (persist to DB)
-            if (formData.shift === 'custom') {
-                // Validate time inputs
-                if (!customValues.shift || !customValues.shiftStartTime || !customValues.shiftEndTime) {
-                    throw new Error('Vui lòng nhập đầy đủ tên ca và khung giờ');
-                }
-
-                // Check if shift name already exists
-                const { data: existingShift } = await supabase
-                    .from('shifts')
-                    .select('id, name')
-                    .ilike('name', finalShift)
-                    .single();
-
-                if (existingShift) {
-                    // If exists (case insensitive), use it
-                    finalShiftId = existingShift.id;
-                } else {
-                    const { data: createdShift, error: shiftError } = await supabase
-                        .from('shifts')
-                        .insert({
-                            name: finalShift,
-                            start_time: customValues.shiftStartTime,
-                            end_time: customValues.shiftEndTime
-                        })
-                        .select('id')
-                        .single();
-
-                    if (shiftError) {
-                        console.error('Error creating custom shift:', shiftError);
-                        throw new Error(`Không thể tạo ca ăn mới: ${shiftError.message}`);
-                    }
-                    if (createdShift) finalShiftId = createdShift.id;
-                }
-            } else {
-                // Existing shift selected
-                if (formData.shift) {
-                    const selectedShiftObj = shifts.find(s => s.name === formData.shift);
-                    if (selectedShiftObj) finalShiftId = selectedShiftObj.id;
-                }
-            }
-
-            // Handle custom meal group creation
-            if (formData.mealGroupId === 'custom') {
-                const { data: newGroup, error: groupError } = await supabase
-                    .from('groups')
-                    .insert({
-                        name: customValues.mealGroupName,
-                        table_area: customValues.mealGroupTableArea,
-                        department: finalDepartment,
-                        shift_id: finalShiftId
-                    })
-                    .select('id')
-                    .single();
-
-                if (groupError) throw groupError;
-                finalMealGroupId = newGroup.id;
-            }
-
-            // 1. Create auth user
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.fullName,
-                        role: formData.role,
-                        employee_code: formData.employeeCode
-                    }
-                }
+            // Call Admin API to create user
+            const response = await fetch('/api/admin/users/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...formData,
+                    isCustomDepartment: formData.department === 'custom',
+                    isCustomShift: formData.shift === 'custom',
+                    isCustomMealGroup: formData.mealGroupId === 'custom',
+                    customValues: customValues
+                }),
             });
 
-            if (authError) throw authError;
-            if (!authData.user) throw new Error('Không thể tạo tài khoản');
+            const result = await response.json();
 
-            // 2. Create/Update user profile
-            const { error: upsertError } = await supabase
-                .from('users')
-                .upsert({
-                    id: authData.user.id,
-                    email: formData.email,
-                    full_name: formData.fullName,
-                    role: formData.role,
-                    employee_code: formData.employeeCode,
-                    shift: finalShift,
-                    department: finalDepartment,
-                    group_id: finalMealGroupId || null,
-                    is_active: true
-                });
+            if (!response.ok) {
+                // Translate common API errors to Vietnamese
+                let errorMessage = result.error || 'Có lỗi xảy ra khi tạo nhân viên';
 
-            if (upsertError) throw upsertError;
+                if (errorMessage.includes('already been registered')) {
+                    errorMessage = 'Email này đã được đăng ký. Vui lòng sử dụng email khác.';
+                } else if (errorMessage.includes('Invalid email')) {
+                    errorMessage = 'Định dạng email không hợp lệ.';
+                } else if (errorMessage.includes('Password')) {
+                    errorMessage = 'Mật khẩu không hợp lệ. Tối thiểu 6 ký tự.';
+                }
 
-            // 4. Log activity
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            if (currentUser) {
-                await supabase.from('activity_logs').insert({
-                    action: 'CREATE_USER',
-                    performed_by: currentUser.id,
-                    target_type: 'user',
-                    target_id: authData.user.id,
-                    details: {
-                        email: formData.email,
-                        role: formData.role,
-                        employee_code: formData.employeeCode,
-                        shift: finalShift,
-                        department: finalDepartment,
-                        group_id: finalMealGroupId,
-                        is_custom_meal_group: formData.mealGroupId === 'custom',
-                        is_custom_shift: formData.shift === 'custom',
-                        is_custom_department: formData.department === 'custom'
-                    }
-                });
+                throw new Error(errorMessage);
             }
 
             // Success
@@ -388,11 +288,9 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess, mealGroup
                                             className="appearance-none flex w-full rounded-lg text-[#181410] dark:text-white border border-[#e7dfda] dark:border-white/20 bg-white dark:bg-white/5 h-12 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                         >
                                             <option value="">Chọn phòng ban</option>
-                                            <option value="hr">Phòng Nhân sự</option>
-                                            <option value="it">Phòng Kỹ thuật / IT</option>
-                                            <option value="sales">Phòng Kinh doanh</option>
-                                            <option value="production">Bộ phận Sản xuất</option>
-                                            <option value="accounting">Phòng Kế toán</option>
+                                            {departments.map(dept => (
+                                                <option key={dept} value={dept}>{dept}</option>
+                                            ))}
                                             <option className="font-bold text-primary" value="custom">+ Thêm phòng ban mới...</option>
                                         </select>
                                         <Icon name="expand_more" className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
@@ -536,10 +434,9 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess, mealGroup
                                                 className="appearance-none flex w-full rounded-lg text-[#181410] dark:text-white border border-primary/40 bg-white dark:bg-white/5 h-12 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                             >
                                                 <option value="">Chọn ca</option>
-                                                <option value="shift0">11:00 - 11:45</option>
-                                                <option value="shift1">11:30 - 12:15</option>
-                                                <option value="shift2">12:15 - 13:00</option>
-                                                <option value="shift3">13:00 - 13:45</option>
+                                                {shifts.map(shift => (
+                                                    <option key={shift.id} value={shift.id}>{shift.name}</option>
+                                                ))}
                                                 <option className="font-bold text-primary" value="custom">+ Thêm ca mới...</option>
                                             </select>
                                             <Icon name="restaurant" className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-primary" />

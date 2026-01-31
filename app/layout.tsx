@@ -24,7 +24,7 @@ export default function RootLayout({
                     rel="stylesheet"
                 />
             </head>
-            <body className="antialiased font-[family-name:var(--font-work-sans)]">
+            <body className="antialiased font-[family-name:var(--font-work-sans)]" suppressHydrationWarning>
                 <ToastProvider>
                     {children}
                 </ToastProvider>

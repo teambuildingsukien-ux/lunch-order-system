@@ -11,6 +11,10 @@ import ShiftGroupManagement from './shifts-groups/ShiftGroupManagement';
 import UrgentNotificationModal from './overview/UrgentNotificationModal';
 import AnnouncementsHistoryModal from './overview/AnnouncementsHistoryModal';
 import DeadlineSettingModal from './overview/DeadlineSettingModal';
+import CookingDaysSettingModal from './overview/CookingDaysSettingModal';
+import ActivityHistoryModal from './overview/ActivityHistoryModal';
+import ActivityLogsPage from './activitylogs/ActivityLogsPage';
+import AutoResetSettingModal from './overview/AutoResetSettingModal';
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -38,7 +42,9 @@ interface RecentActivity {
     department?: string;
     shift?: string;
     group_name?: string;
-    status: string;
+    eating_status: string;        // Trạng thái đăng ký ăn (cho cột HÀNH ĐỘNG)
+    employee_status: string;      // Trạng thái nhân viên (cho cột TRẠNG THÁI)
+    status: string;               // Legacy field for compatibility
     time: string;
 }
 
@@ -61,6 +67,10 @@ export default function AdminManagerDashboard() {
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
     const [showAnnouncementsHistoryModal, setShowAnnouncementsHistoryModal] = useState(false);
     const [showDeadlineModal, setShowDeadlineModal] = useState(false);
+    const [showCookingDaysModal, setShowCookingDaysModal] = useState(false);
+    const [showActivityHistoryModal, setShowActivityHistoryModal] = useState(false);
+    const [showAutoResetModal, setShowAutoResetModal] = useState(false);
+    const [cookingDays, setCookingDays] = useState<{ start_day: number; end_day: number }>({ start_day: 1, end_day: 5 });
 
     // View Mode State
     const [viewMode, setViewMode] = useState<'admin' | 'kitchen' | 'employee'>('admin');
@@ -97,12 +107,16 @@ export default function AdminManagerDashboard() {
 
     useEffect(() => {
         // Initial fetch
+        fetchCookingDays();
         fetchDashboardData();
 
         // Set current date for display
         const today = new Date();
         const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         setCurrentDate(today.toLocaleDateString('vi-VN', options));
+
+        // Force reset selectedDate to today (prevent browser autofill)
+        setSelectedDate(today.toISOString().split('T')[0]);
 
         // Setup Realtime subscriptions
         const ordersChannel = supabase
@@ -148,6 +162,24 @@ export default function AdminManagerDashboard() {
 
         fetchDashboardData();
     }, [currentPage, selectedDate, statusFilter]);
+
+    const fetchCookingDays = async () => {
+        try {
+            const response = await fetch('/api/admin/settings/cooking-days');
+            if (response.ok) {
+                const result = await response.json();
+                setCookingDays(result.data);
+            } else {
+                // If API fails, use default Monday-Friday
+                console.log('Using default cooking days: Monday-Friday');
+                setCookingDays({ start_day: 1, end_day: 5 });
+            }
+        } catch (error) {
+            console.error('Failed to fetch cooking days, using default:', error);
+            // Fallback to default
+            setCookingDays({ start_day: 1, end_day: 5 });
+        }
+    };
 
     const fetchDashboardData = async () => {
         try {
@@ -222,6 +254,7 @@ export default function AdminManagerDashboard() {
                     email,
                     department,
                     shift,
+                    is_active,
                     group:groups(name)
                 `)
                 .order('full_name', { ascending: true });
@@ -238,25 +271,40 @@ export default function AdminManagerDashboard() {
                 .select('user_id, status, created_at')
                 .eq('date', selectedDate);
 
-            // Create a map of user_id -> order
+            // Fetch activity logs for this date to get accurate timestamps
+            // Filter by details.date to avoid UTC/VN timezone mismatch
+            const { data: activityLogs } = await supabase
+                .from('activity_logs')
+                .select('performed_by, action, created_at, details')
+                .in('action', ['meal_registration', 'meal_cancellation'])
+                .filter('details->>date', 'eq', selectedDate)
+                .order('created_at', { ascending: false });
+
+            // Create maps for fast lookup
             const orderMap = new Map();
             ordersForDate?.forEach((order: any) => {
                 orderMap.set(order.user_id, order);
             });
 
-            // Combine users with their orders
+            // Create activity map (most recent activity per user for the date)
+            const activityMap = new Map();
+            activityLogs?.forEach((log: any) => {
+                if (!activityMap.has(log.performed_by)) {
+                    activityMap.set(log.performed_by, log);
+                }
+            });
+
+            // Combine users with their orders and activity logs
             let combinedData = allUsers.map((user: any) => {
                 const order = orderMap.get(user.id);
-                // Default logic: No record = Eating (Đã đăng ký)
-                // Only explicitly 'not_eating' = Not Eating (Không ăn)
+                const activity = activityMap.get(user.id);
 
-                let status = 'Đã đăng ký';
-                // Note: user.full_name is correct from file view
-                // user.department || '-' is correct from file view but I will map logic here
-                // Note: I will inject the status calculation logic here
+                // Eating Status Logic: No record = Eating (Đã đăng ký)
+                // Only explicitly 'not_eating' = Not Eating (Không ăn)
+                let eatingStatus = 'Đã đăng ký';
 
                 if (order && order.status === 'not_eating') {
-                    status = 'Không ăn';
+                    eatingStatus = 'Không ăn';
                 }
 
                 return {
@@ -266,20 +314,22 @@ export default function AdminManagerDashboard() {
                     department: user.department || '-',
                     shift: user.shift || '-',
                     group_name: user.group?.name || '-',
-                    order_status: status, // Logic applied
-                    // Keep original created_at if exists
-                    created_at: order?.created_at || null,
-                    // Helper for original status reference if needed
+                    is_active: user.is_active !== false, // Default true nếu null/undefined
+                    eating_status: eatingStatus, // Status đăng ký ăn (cho cột HÀNH ĐỘNG)
+                    order_status: eatingStatus, // Legacy field (giữ để tương thích)
+                    // Use activity log timestamp if available, fallback to order created_at
+                    created_at: activity?.created_at || order?.created_at || null,
                     raw_status: order?.status || 'eating'
                 };
             });
 
             // Apply status filter
             if (statusFilter === 'eating') {
-                // Eating includes 'eating' AND null (default)
-                combinedData = combinedData.filter(item => item.order_status === 'eating' || !item.order_status);
+                // Eating: raw_status is 'eating' OR null/undefined (default - người không báo nghỉ)
+                combinedData = combinedData.filter(item => item.raw_status === 'eating' || !item.raw_status);
             } else if (statusFilter === 'not_eating') {
-                combinedData = combinedData.filter(item => item.order_status && item.order_status !== 'eating');
+                // Not eating: raw_status is 'not_eating'
+                combinedData = combinedData.filter(item => item.raw_status === 'not_eating');
             } else if (statusFilter === 'not_registered') {
                 // No one is unregistered now
                 combinedData = [];
@@ -296,24 +346,37 @@ export default function AdminManagerDashboard() {
             const paginatedData = combinedData.slice(startIndex, endIndex);
 
             // Format activities
-            // Format activities
-            const activities = paginatedData.map((item: any) => ({
-                id: item.id,
-                user_name: item.user_name,
-                email: item.email,
-                department: item.department,
-                shift: item.shift,
-                group_name: item.group_name,
-                status: !item.order_status || item.order_status === 'eating'
-                    ? 'Đã đăng ký'
-                    : 'Không ăn',
-                time: item.created_at
-                    ? new Date(item.created_at).toLocaleTimeString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })
-                    : '-'
-            }));
+            const activities = paginatedData.map((item: any) => {
+                // Use the ALREADY MAPPED eating_status from combinedData
+                // DON'T re-parse it, it's already been mapped correctly
+                const eatingStatus = item.eating_status;
+
+                // Employee status SYNCHRONIZED with eating status
+                // Đã đăng ký → Hoạt động
+                // Không ăn → Không hoạt động
+                const employeeStatus = eatingStatus === 'Đã đăng ký'
+                    ? 'Hoạt động'
+                    : 'Không hoạt động';
+
+                return {
+                    id: item.id,
+                    user_name: item.user_name,
+                    email: item.email,
+                    department: item.department,
+                    shift: item.shift,
+                    group_name: item.group_name,
+                    eating_status: eatingStatus,
+                    employee_status: employeeStatus,
+                    status: eatingStatus, // Legacy field
+                    time: item.created_at
+                        ? new Date(item.created_at).toLocaleTimeString('vi-VN', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone: 'Asia/Ho_Chi_Minh'  // Force Vietnam timezone
+                        })
+                        : '-'
+                };
+            });
             setRecentActivities(activities);
 
         } catch (error) {
@@ -384,6 +447,17 @@ export default function AdminManagerDashboard() {
                             >
                                 <Icon name="schedule" className="text-[24px]" />
                                 <span>Quản lý ca nhóm ăn</span>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveSidebarItem('activity-logs')}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${activeSidebarItem === 'activity-logs' ? 'font-semibold' : 'font-medium'} transition-colors ${activeSidebarItem === 'activity-logs'
+                                    ? 'bg-[#c04b00]/10 text-[#c04b00]'
+                                    : 'text-[#606e8a] hover:bg-gray-100 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                <Icon name="history" className="text-[24px]" />
+                                <span>Lịch sử hoạt động</span>
                             </button>
                         </nav>
 
@@ -471,6 +545,27 @@ export default function AdminManagerDashboard() {
                                 >
                                     <Icon name="notifications" className="text-[22px]" />
                                 </button>
+                                <button
+                                    onClick={() => setShowActivityHistoryModal(true)}
+                                    className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-900/10 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-all shadow-sm hover:shadow"
+                                    title="Lịch sử hoạt động"
+                                >
+                                    <Icon name="history" className="text-[22px]" />
+                                </button>
+                                <button
+                                    onClick={() => setShowCookingDaysModal(true)}
+                                    className="p-2.5 rounded-xl bg-green-50 dark:bg-green-900/10 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 transition-all shadow-sm hover:shadow"
+                                    title="Cài đặt ngày nấu ăn"
+                                >
+                                    <Icon name="settings" className="text-[22px]" />
+                                </button>
+                                <button
+                                    onClick={() => setShowAutoResetModal(true)}
+                                    className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-900/10 text-teal-600 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-all shadow-sm hover:shadow"
+                                    title="Tự động đăng ký lại"
+                                >
+                                    <Icon name="autorenew" className="text-[22px]" />
+                                </button>
                             </>
                         )}
                         {/* Generic Logout for other modes if sidebar is hidden? 
@@ -546,8 +641,15 @@ export default function AdminManagerDashboard() {
                                         <div className="flex justify-between items-center mb-6">
                                             <div>
                                                 <h3 className="text-lg font-bold dark:text-white">Thống kê suất ăn theo tuần</h3>
-                                                <p className="text-sm text-[#606e8a]">Thống kê từ Thứ 2 đến Chủ Nhật</p>
+                                                <p className="text-sm text-[#606e8a]">Biểu đồ hiển thị theo cài đặt ngày nấu cơm</p>
                                             </div>
+                                            <button
+                                                onClick={() => setShowCookingDaysModal(true)}
+                                                className="flex items-center gap-1 px-3 py-2 bg-[#f5f1ee] dark:bg-slate-800 hover:bg-[#dbdfe6] dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                            >
+                                                <Icon name="settings" className="text-lg text-[#606e8a]" />
+                                                <span className="text-xs font-bold text-[#606e8a]">Cài đặt</span>
+                                            </button>
                                             <div className="flex gap-2">
                                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-[#c04b00]/10 text-[#c04b00] text-xs font-bold rounded-full">
                                                     Tuần này: {weeklyData.reduce((sum, d) => sum + d.registered, 0)}
@@ -566,45 +668,63 @@ export default function AdminManagerDashboard() {
 
                                             {/* Bars container */}
                                             <div className="absolute inset-0 flex items-center justify-around px-2">
-                                                {weeklyData.length > 0 ? weeklyData.map((dayData, index) => {
-                                                    const percentage = totalEmployees > 0 ? Math.round((dayData.registered / totalEmployees) * 100) : 0;
-                                                    return (
-                                                        <div key={dayData.day} className="flex flex-col items-center gap-2 flex-1 max-w-[60px]">
-                                                            {/* Percentage label on top */}
-                                                            <span className="text-xs font-bold text-primary mb-1">
-                                                                {percentage}%
-                                                            </span>
+                                                {(() => {
+                                                    // Filter weeklyData based on cooking_days setting
+                                                    const { start_day, end_day } = cookingDays;
+                                                    const filteredData = weeklyData.filter((dayData) => {
+                                                        const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+                                                        const dayIndex = dayNames.indexOf(dayData.day);
 
-                                                            {/* Bar with percentage fill */}
-                                                            <div className="relative w-8 h-[180px] bg-[#c04b00]/20 rounded-lg overflow-hidden group">
-                                                                {/* Filled portion (from bottom) */}
-                                                                <div
-                                                                    className="absolute bottom-0 left-0 right-0 bg-[#c04b00] transition-all rounded-b-lg"
-                                                                    style={{ height: `${percentage}%` }}
-                                                                />
+                                                        // Handle wrap-around week (e.g., Sat to Mon)
+                                                        if (start_day <= end_day) {
+                                                            return dayIndex >= start_day && dayIndex <= end_day;
+                                                        } else {
+                                                            return dayIndex >= start_day || dayIndex <= end_day;
+                                                        }
+                                                    });
 
-                                                                {/* Hover tooltip */}
-                                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-                                                                    {dayData.registered}/{totalEmployees}
+                                                    return filteredData.length > 0 ? filteredData.map((dayData, index) => {
+                                                        const percentage = totalEmployees > 0 ? Math.round((dayData.registered / totalEmployees) * 100) : 0;
+                                                        return (
+                                                            <div key={dayData.day} className="flex flex-col items-center gap-2 flex-1 max-w-[60px]">
+                                                                {/* Percentage label on top */}
+                                                                <span className="text-xs font-bold text-primary mb-1">
+                                                                    {percentage}%
+                                                                </span>
+
+                                                                {/* Bar with percentage fill */}
+                                                                <div className="relative w-8 h-[180px] bg-[#c04b00]/20 rounded-lg overflow-hidden group">
+                                                                    {/* Filled portion (from bottom) */}
+                                                                    <div
+                                                                        className="absolute bottom-0 left-0 right-0 bg-[#c04b00] transition-all rounded-b-lg"
+                                                                        style={{ height: `${percentage}%` }}
+                                                                    />
+
+                                                                    {/* Hover tooltip */}
+                                                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
+                                                                        {dayData.registered}/{totalEmployees}
+                                                                    </div>
                                                                 </div>
+
+                                                                {/* Day label */}
+                                                                <span className="text-xs font-bold text-[#606e8a] mt-1">{dayData.day}</span>
+                                                                {/* Date label */}
+                                                                <span className="text-[10px] bg-gray-100 dark:bg-slate-800 text-[#606e8a] px-1 rounded">
+                                                                    {dayData.date}
+                                                                </span>
+
+                                                                {/* Count/Total label */}
+                                                                <span className="text-[10px] font-semibold text-primary mt-0.5">
+                                                                    {dayData.registered}/{totalEmployees}
+                                                                </span>
                                                             </div>
-
-                                                            {/* Day label */}
-                                                            <span className="text-xs font-bold text-[#606e8a] mt-1">{dayData.day}</span>
-                                                            {/* Date label */}
-                                                            <span className="text-[10px] bg-gray-100 dark:bg-slate-800 text-[#606e8a] px-1 rounded">
-                                                                {dayData.date}
-                                                            </span>
-
-                                                            {/* Count/Total label */}
-                                                            <span className="text-[10px] font-semibold text-primary mt-0.5">
-                                                                {dayData.registered}/{totalEmployees}
-                                                            </span>
+                                                        );
+                                                    }) : (
+                                                        <div className="flex items-center justify-center w-full h-full">
+                                                            <p className="text-sm text-[#606e8a]">Không có dữ liệu cho các ngày được chọn</p>
                                                         </div>
                                                     );
-                                                }) : (
-                                                    <div className="text-center text-[#606e8a] py-8">Loading...</div>
-                                                )}
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
@@ -751,15 +871,15 @@ export default function AdminManagerDashboard() {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm font-medium text-[#606e8a]">{activity.time}</td>
-                                                                <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">{activity.status}</td>
+                                                                {/* HÀNH ĐỘNG column - Eating Status */}
+                                                                <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">{activity.eating_status}</td>
+                                                                {/* TRẠNG THÁI column - Employee Active Status */}
                                                                 <td className="px-6 py-4">
-                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold ${activity.status === 'Đã đăng ký'
+                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold ${activity.employee_status === 'Hoạt động'
                                                                         ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                                                                        : activity.status === 'Không ăn'
-                                                                            ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                                                                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400'
+                                                                        : 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
                                                                         }`}>
-                                                                        {activity.status === 'Đã đăng ký' ? 'Thành công' : activity.status === 'Không ăn' ? 'Không ăn' : 'Chờ xử lý'}
+                                                                        {activity.employee_status}
                                                                     </span>
                                                                 </td>
                                                             </tr>
@@ -828,6 +948,10 @@ export default function AdminManagerDashboard() {
                         {activeSidebarItem === 'shifts-groups' && (
                             <ShiftGroupManagement />
                         )}
+
+                        {activeSidebarItem === 'activity-logs' && (
+                            <ActivityLogsPage />
+                        )}
                     </main>
                 )}
 
@@ -859,6 +983,29 @@ export default function AdminManagerDashboard() {
                 <DeadlineSettingModal
                     isOpen={showDeadlineModal}
                     onClose={() => setShowDeadlineModal(false)}
+                />
+
+                <CookingDaysSettingModal
+                    isOpen={showCookingDaysModal}
+                    onClose={() => setShowCookingDaysModal(false)}
+                    onSuccess={() => {
+                        fetchCookingDays();
+                        fetchDashboardData();
+                    }}
+                />
+
+                <ActivityHistoryModal
+                    isOpen={showActivityHistoryModal}
+                    onClose={() => setShowActivityHistoryModal(false)}
+                />
+
+                <AutoResetSettingModal
+                    isOpen={showAutoResetModal}
+                    onClose={() => setShowAutoResetModal(false)}
+                    onSuccess={() => {
+                        // Optional: Refetch dashboard data or show success message
+                        console.log('Auto-reset settings saved successfully');
+                    }}
                 />
             </div>
         </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/providers/toast-provider';
 import DashboardHeader from '@/app/dashboard/_components/DashboardHeader';
+import ForecastCards from '@/app/dashboard/_components/admin/ForecastCards';
 
 
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -267,6 +268,11 @@ export default function KitchenDashboard({ hideHeader = false }: KitchenDashboar
                             <span>-1% so với hôm qua</span>
                         </div>
                     </div>
+                </div>
+
+                {/* NEW: Forecast Cards for Tomorrow */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <ForecastCards />
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-8">

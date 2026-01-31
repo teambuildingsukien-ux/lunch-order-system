@@ -1,0 +1,38 @@
+# Copy và paste từng biến dưới đây vào Vercel Dashboard
+# https://vercel.com/viet-teams-projects/lunch-order-system/settings/environment-variables
+
+## NEXT_PUBLIC_SUPABASE_URL
+Value: https://dlekahcgkzfrjyzczxyl.supabase.co
+Environment: Production, Preview, Development
+
+## NEXT_PUBLIC_SUPABASE_ANON_KEY  
+Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsZWthaGNna3pmcmp5emN6eHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NzIyNjQsImV4cCI6MjA4NDU0ODI2NH0.sN_orjZ_pd9SsxB1mYDUX3f81uSOO3tCSpx9nJYG-YY
+Environment: Production, Preview, Development
+
+## SUPABASE_SERVICE_ROLE_KEY
+Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsZWthaGNna3pmcmp5emN6eHlsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODk3MjI2NCwiZXhwIjoyMDg0NTQ4MjY0fQ.3Z79U1tIlHj7311D1bUPm2LW4vryQfZqMvNH5Y7Qn2Q
+Environment: Production, Preview, Development
+
+## DATABASE_URL
+Value: postgresql://postgres:Congdanh%4079@db.dlekahcgkzfrjyzczxyl.supabase.co:5432/postgres
+Environment: Production, Preview, Development
+
+## NEXT_PUBLIC_APP_URL
+Value: https://lunch-order-system-beryl.vercel.app
+Environment: Production
+
+## NEXT_PUBLIC_TIMEZONE
+Value: Asia/Ho_Chi_Minh
+Environment: Production, Preview, Development
+
+## CRON_SECRET
+Value: prod_cron_secret_2026
+Environment: Production
+
+## RATE_LIMIT_MAX_REQUESTS
+Value: 60
+Environment: Production, Preview, Development
+
+## RATE_LIMIT_WINDOW_MS
+Value: 60000
+Environment: Production, Preview, Development

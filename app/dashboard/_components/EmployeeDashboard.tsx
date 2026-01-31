@@ -62,6 +62,9 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
     const [monthlyEatingDays, setMonthlyEatingDays] = useState(0);
     const [registrationDeadline, setRegistrationDeadline] = useState('05:00');
     const [deadlineOffset, setDeadlineOffset] = useState(0);
+    const [totalGroupMembers, setTotalGroupMembers] = useState(0);
+    const [memberPage, setMemberPage] = useState(1);
+    const MEMBERS_PER_PAGE = 4;
 
     useEffect(() => {
         fetchDashboardData();
@@ -130,11 +133,20 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                 setOrderStatus(orderData?.status || 'eating');
 
                 if (profile.group_id) {
+                    // First, get total count of members in group
+                    const { count } = await supabase
+                        .from('users')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('group_id', profile.group_id);
+
+                    setTotalGroupMembers(count || 0);
+
+                    // Then fetch first page of members (0-3 = first 4)
                     const { data: members } = await supabase
                         .from('users')
                         .select('id, full_name, email, role')
                         .eq('group_id', profile.group_id)
-                        .limit(4);
+                        .range(0, MEMBERS_PER_PAGE - 1);
 
                     if (members) {
                         const membersWithStatus = await Promise.all(
@@ -282,6 +294,49 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push('/login');
+    };
+
+    const loadMemberPage = async (page: number) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: profile } = await supabase
+                .from('users')
+                .select('group_id')
+                .eq('email', user.email)
+                .single();
+
+            if (!profile?.group_id) return;
+
+            const from = (page - 1) * MEMBERS_PER_PAGE;
+            const to = from + MEMBERS_PER_PAGE - 1;
+
+            const { data: members } = await supabase
+                .from('users')
+                .select('id, full_name, email, role')
+                .eq('group_id', profile.group_id)
+                .range(from, to);
+
+            if (members) {
+                const today = new Date().toISOString().split('T')[0];
+                const membersWithStatus = await Promise.all(
+                    members.map(async (member) => {
+                        const { data: order } = await supabase
+                            .from('orders')
+                            .select('status')
+                            .eq('user_id', member.id)
+                            .eq('date', today)
+                            .single();
+                        return { ...member, order_status: order?.status || 'eating' };
+                    })
+                );
+                setGroupMembers(membersWithStatus);
+                setMemberPage(page);
+            }
+        } catch (error) {
+            console.error('Error loading member page:', error);
+        }
     };
 
     const getStatusIcon = (status: string | null | undefined) => {
@@ -462,8 +517,32 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                                 {/* Group Members */}
                                 <div className="lg:col-span-2 bg-white dark:bg-[#1E1A17] rounded-3xl p-5 md:p-8 shadow-md border border-orange-100 dark:border-white/10">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Thành viên nhóm ({groupMembers.length})</h3>
-                                        <button className="text-[#B24700] font-bold text-sm hover:underline">Xem tất cả</button>
+                                        <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Thành viên nhóm ({totalGroupMembers})</h3>
+
+                                        {/* Pagination Controls */}
+                                        {totalGroupMembers > MEMBERS_PER_PAGE && (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => loadMemberPage(memberPage - 1)}
+                                                    disabled={memberPage === 1}
+                                                    className="p-2 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                    aria-label="Trang trước"
+                                                >
+                                                    <Icon name="chevron_left" className="text-[#B24700]" />
+                                                </button>
+                                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400 min-w-[80px] text-center">
+                                                    Trang {memberPage}/{Math.ceil(totalGroupMembers / MEMBERS_PER_PAGE)}
+                                                </span>
+                                                <button
+                                                    onClick={() => loadMemberPage(memberPage + 1)}
+                                                    disabled={memberPage >= Math.ceil(totalGroupMembers / MEMBERS_PER_PAGE)}
+                                                    className="p-2 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                    aria-label="Trang sau"
+                                                >
+                                                    <Icon name="chevron_right" className="text-[#B24700]" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

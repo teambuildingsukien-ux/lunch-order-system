@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/providers/toast-provider';
 import DashboardHeader from './DashboardHeader';
+import BulkRegistrationCalendar from './BulkRegistrationCalendar';
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -65,6 +66,7 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
     const [totalGroupMembers, setTotalGroupMembers] = useState(0);
     const [memberPage, setMemberPage] = useState(1);
     const MEMBERS_PER_PAGE = 4;
+    const [showCalendar, setShowCalendar] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
@@ -356,6 +358,11 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
         );
     }
 
+    // If showing calendar view, render calendar component
+    if (showCalendar) {
+        return <BulkRegistrationCalendar onClose={() => setShowCalendar(false)} />;
+    }
+
     return (
         <div className={`min-h-screen bg-[#FFFBF7] dark:bg-[#12100E] text-slate-900 dark:text-slate-100 ${isDarkMode ? 'dark' : ''}`}>
             {/* Header - Hide khi được render bởi Admin Dashboard */}
@@ -391,6 +398,15 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                             </span>.
                         </p>
                     </div>
+
+                    {/* Calendar Toggle Button */}
+                    <button
+                        onClick={() => setShowCalendar(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-[#B24700] hover:bg-[#8F3900] text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                    >
+                        <Icon name="calendar_month" className="text-[20px]" />
+                        Đăng ký theo lịch
+                    </button>
                 </div>
 
                 {/* Status Cards */}

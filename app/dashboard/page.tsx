@@ -7,6 +7,7 @@ import EmployeeDashboard from './_components/EmployeeDashboard';
 import KitchenDashboard from './kitchen/_components/KitchenDashboard';
 import AdminManagerDashboard from './_components/admin/AdminManagerDashboard';
 import DashboardHeader from './_components/DashboardHeader';
+import { TrialBanner } from '@/components/TrialBanner';
 
 /**
  * Dashboard Page - Role-based routing với tab support cho Admin
@@ -64,6 +65,9 @@ export default function DashboardPage() {
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
                 />
+                <div className="max-w-7xl mx-auto px-6 py-6">
+                    <TrialBanner />
+                </div>
                 {activeTab === 'employee' ? (
                     <EmployeeDashboard hideHeader={true} />
                 ) : (

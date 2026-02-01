@@ -153,6 +153,15 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+            // Get user's tenant_id
+            const { data: profile } = await supabase
+                .from('users')
+                .select('id, tenant_id')
+                .eq('email', user.email)
+                .single();
+
+            if (!profile || !profile.tenant_id) return;
+
             const dates = Array.from(selectedDates);
 
             // Register for all selected dates
@@ -161,7 +170,7 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
                 const { data: existing } = await supabase
                     .from('orders')
                     .select('id, status')
-                    .eq('user_id', user.id)
+                    .eq('user_id', profile.id)
                     .eq('date', date)
                     .single();
 
@@ -172,11 +181,12 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
                         .update({ status: 'eating' })
                         .eq('id', existing.id);
                 } else {
-                    // Create new order
+                    // Create new order with tenant_id
                     await supabase
                         .from('orders')
                         .insert({
-                            user_id: user.id,
+                            tenant_id: profile.tenant_id,  // REQUIRED for RLS
+                            user_id: profile.id,
                             date: date,
                             status: 'eating'
                         });
@@ -216,13 +226,22 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+            // Get user's tenant_id
+            const { data: profile } = await supabase
+                .from('users')
+                .select('id, tenant_id')
+                .eq('email', user.email)
+                .single();
+
+            if (!profile || !profile.tenant_id) return;
+
             const dates = Array.from(selectedDates);
 
             for (const date of dates) {
                 const { data: existing } = await supabase
                     .from('orders')
                     .select('id, status')
-                    .eq('user_id', user.id)
+                    .eq('user_id', profile.id)
                     .eq('date', date)
                     .single();
 
@@ -235,7 +254,8 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
                     await supabase
                         .from('orders')
                         .insert({
-                            user_id: user.id,
+                            tenant_id: profile.tenant_id,  // REQUIRED for RLS
+                            user_id: profile.id,
                             date: date,
                             status: 'not_eating'
                         });

@@ -263,7 +263,7 @@ async function generateOrders(employees: any[]) {
         }
     }
 
-    const { error } = await supabase.from('orders').upsert(orders, { onConflict: 'user_id,date' }); // Assuming composite key or just insert
+    const { error } = await supabase.from('orders').upsert(orders, { onConflict: 'tenant_id,user_id,date' });
     if (error) console.error('Order generation partial error (might be duplicates):', error.message);
 }
 

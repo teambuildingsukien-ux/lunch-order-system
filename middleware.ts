@@ -40,6 +40,40 @@ export async function middleware(request: NextRequest) {
             // Redirect to login if not authenticated
             return NextResponse.redirect(new URL('/login', request.url))
         }
+
+        // Check subscription status for authenticated users
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select(`
+                tenants (
+                    subscription_status,
+                    trial_ends_at
+                )
+            `)
+            .eq('id', user.id)
+            .single();
+
+        if (!userError && userData?.tenants) {
+            const tenant = userData.tenants as any;
+            const { subscription_status, trial_ends_at } = tenant;
+
+            // Check if trial expired
+            if (subscription_status === 'trialing' && trial_ends_at) {
+                const trialEndDate = new Date(trial_ends_at);
+                if (trialEndDate < new Date()) {
+                    return NextResponse.redirect(
+                        new URL('/billing?trial_expired=true', request.url)
+                    );
+                }
+            }
+
+            // Check if subscription inactive (past_due or canceled)
+            if (['canceled', 'past_due'].includes(subscription_status)) {
+                return NextResponse.redirect(
+                    new URL('/billing?payment_required=true', request.url)
+                );
+            }
+        }
     }
 
     // If authenticated and trying to access login page, redirect to unified dashboard

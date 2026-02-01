@@ -292,11 +292,17 @@ export default function LoginScreen() {
                     </form>
 
                     {/* Footer Links */}
-                    <div className="mt-12 pt-8 border-t border-[#f5f2f0] dark:border-gray-800 text-center">
+                    <div className="mt-12 pt-8 border-t border-[#f5f2f0] dark:border-gray-800 text-center space-y-3">
                         <p className="text-sm text-[#8d715e] dark:text-gray-400">
                             Bạn gặp vấn đề khi đăng nhập?{' '}
                             <a className="text-[#b24700] font-bold hover:underline ml-1 transition-all" href="#">
                                 Liên hệ nhân sự
+                            </a>
+                        </p>
+                        <p className="text-sm text-[#8d715e] dark:text-gray-400">
+                            Chưa có tài khoản?{' '}
+                            <a className="text-[#b24700] font-bold hover:underline ml-1 transition-all" href="/signup">
+                                Đăng ký ngay
                             </a>
                         </p>
                     </div>

@@ -151,18 +151,9 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                         .range(0, MEMBERS_PER_PAGE - 1);
 
                     if (members) {
-                        const membersWithStatus = await Promise.all(
-                            members.map(async (member) => {
-                                const { data: order } = await supabase
-                                    .from('orders')
-                                    .select('status')
-                                    .eq('user_id', member.id)
-                                    .eq('date', today)
-                                    .single();
-                                return { ...member, order_status: order?.status || 'eating' };
-                            })
-                        );
-                        setGroupMembers(membersWithStatus);
+                        // Don't fetch individual order status - RLS prevents employees from seeing others' orders
+                        // This is a security feature, not a bug
+                        setGroupMembers(members as GroupMember[]);
                     }
                 }
 
@@ -210,9 +201,10 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+
             const { data: profile } = await supabase
                 .from('users')
-                .select('id')
+                .select('id, tenant_id')
                 .eq('email', user.email)
                 .single();
 
@@ -224,14 +216,16 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
             const { error } = await supabase
                 .from('orders')
                 .upsert({
+                    tenant_id: profile.tenant_id,  // REQUIRED for RLS
                     user_id: profile.id,
                     date: today,
                     status: newStatus,
                     locked: false,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id,date' });
+                }, { onConflict: 'tenant_id,user_id,date' });
 
             if (error) throw error;
+
 
             // Get current deadline for penalty tracking
             const { data: deadlineSettings } = await supabase
@@ -321,19 +315,8 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                 .range(from, to);
 
             if (members) {
-                const today = new Date().toISOString().split('T')[0];
-                const membersWithStatus = await Promise.all(
-                    members.map(async (member) => {
-                        const { data: order } = await supabase
-                            .from('orders')
-                            .select('status')
-                            .eq('user_id', member.id)
-                            .eq('date', today)
-                            .single();
-                        return { ...member, order_status: order?.status || 'eating' };
-                    })
-                );
-                setGroupMembers(membersWithStatus);
+                // Don't fetch individual order status - RLS prevents employees from seeing others' orders
+                setGroupMembers(members as GroupMember[]);
                 setMemberPage(page);
             }
         } catch (error) {

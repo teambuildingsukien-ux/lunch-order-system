@@ -246,7 +246,29 @@ export default function AdminManagerDashboard() {
 
 
             // 3. Fetch user activities with pagination and filters
-            // First, get all users
+            // First, get current user's tenant_id for filtering
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) {
+                console.error('[AdminManagerDashboard] No authenticated user');
+                setRecentActivities([]);
+                setTotalPages(1);
+                return;
+            }
+
+            const { data: currentProfile } = await supabase
+                .from('users')
+                .select('tenant_id')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (!currentProfile?.tenant_id) {
+                console.error('[AdminManagerDashboard] Current user has no tenant_id');
+                setRecentActivities([]);
+                setTotalPages(1);
+                return;
+            }
+
+            // Get ALL users from SAME TENANT only
             const { data: allUsers } = await supabase
                 .from('users')
                 .select(`
@@ -258,6 +280,7 @@ export default function AdminManagerDashboard() {
                     is_active,
                     group:groups(name)
                 `)
+                .eq('tenant_id', currentProfile.tenant_id) // ✅ TENANT FILTERING
                 .order('full_name', { ascending: true });
 
             if (!allUsers) {

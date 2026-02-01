@@ -20,17 +20,17 @@ export const PAYOS_PLANS = {
     basic: {
         name: 'Basic',
         amount: 200000, // VNĐ
-        description: 'Gói Basic - Lên đến 50 nhân viên',
+        description: 'Goi Basic', // Max 25 chars for PayOS
     },
     pro: {
         name: 'Pro',
         amount: 500000, // VNĐ
-        description: 'Gói Pro - Lên đến 200 nhân viên',
+        description: 'Goi Pro', // Max 25 chars for PayOS
     },
     enterprise: {
         name: 'Enterprise',
         amount: 0, // Custom
-        description: 'Gói Enterprise - Không giới hạn nhân viên',
+        description: 'Goi Enterprise', // Max 25 chars for PayOS
     },
 } as const;
 

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         const paymentLink = await createPaymentLink({
             orderCode,
             amount: planConfig.amount,
-            description: `${planConfig.description} - ${tenant.name}`,
+            description: planConfig.description, // PayOS limit: 25 chars
             returnUrl: `${appUrl}/dashboard?payment_success=true`,
             cancelUrl: `${appUrl}/billing?payment_cancelled=true`,
         });

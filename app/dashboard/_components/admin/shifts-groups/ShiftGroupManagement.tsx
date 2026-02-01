@@ -91,22 +91,36 @@ export default function ShiftGroupManagement() {
 
     const fetchGroups = async () => {
         try {
+            // Get current user's tenant for filtering
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return;
+
+            const { data: currentProfile } = await supabase
+                .from('users')
+                .select('tenant_id')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (!currentProfile?.tenant_id) return;
+
             const { data, error } = await supabase
                 .from('groups')
                 .select(`
                     *,
                     shift:shifts (*)
                 `)
+                .eq('tenant_id', currentProfile.tenant_id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            // Get member counts
+            // Get member counts (tenant filtered)
             const groupsWithCounts = await Promise.all(
                 (data || []).map(async (group) => {
                     const { count } = await supabase
                         .from('users')
                         .select('*', { count: 'exact', head: true })
+                        .eq('tenant_id', currentProfile.tenant_id)
                         .eq('group_id', group.id);
                     return { ...group, member_count: count || 0 };
                 })

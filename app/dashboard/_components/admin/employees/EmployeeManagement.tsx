@@ -70,10 +70,23 @@ export default function EmployeeManagement() {
     const fetchEmployees = async () => {
         setIsLoading(true);
         try {
-            // Build query with department filter
+            // Get current user's tenant_id for filtering
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return;
+
+            const { data: currentProfile } = await supabase
+                .from('users')
+                .select('tenant_id')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (!currentProfile?.tenant_id) return;
+
+            // Build query with department filter AND tenant filter
             let countQuery = supabase
                 .from('users')
                 .select('*', { count: 'exact', head: true })
+                .eq('tenant_id', currentProfile.tenant_id)
                 .or('is_active.is.null,is_active.eq.true');
 
             // Apply department filter for count
@@ -87,7 +100,7 @@ export default function EmployeeManagement() {
             const pages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE);
             setTotalPages(pages);
 
-            // Build data query with department filter
+            // Build data query with department filter AND tenant filter
             let dataQuery = supabase
                 .from('users')
                 .select(`
@@ -97,6 +110,7 @@ export default function EmployeeManagement() {
                         name
                     )
                 `)
+                .eq('tenant_id', currentProfile.tenant_id)
                 .or('is_active.is.null,is_active.eq.true')
                 .order('created_at', { ascending: false })
                 .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
@@ -122,33 +136,62 @@ export default function EmployeeManagement() {
     };
 
     const fetchMealGroups = async () => {
+        // Get current user's tenant for filtering
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) return;
+
+        const { data: currentProfile } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (!currentProfile?.tenant_id) return;
+
         const { data } = await supabase
-            .from('groups') // Fetch from 'groups' table
+            .from('groups')
             .select('id, name')
+            .eq('tenant_id', currentProfile.tenant_id)
             .order('name');
         setMealGroups(data || []);
     };
 
     const fetchStats = async () => {
         try {
+            // Get current user's tenant for filtering
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return;
+
+            const { data: currentProfile } = await supabase
+                .from('users')
+                .select('tenant_id')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (!currentProfile?.tenant_id) return;
+
             const { count: totalCount } = await supabase
                 .from('users')
-                .select('*', { count: 'exact', head: true });
+                .select('*', { count: 'exact', head: true })
+                .eq('tenant_id', currentProfile.tenant_id);
 
             const { count: activeCount } = await supabase
                 .from('users')
                 .select('*', { count: 'exact', head: true })
+                .eq('tenant_id', currentProfile.tenant_id)
                 .or('is_active.is.null,is_active.eq.true');
 
-            // Count meal groups from 'groups' table
+            // Count meal groups from 'groups' table (tenant filtered)
             const { count: groupsCount } = await supabase
                 .from('groups')
-                .select('*', { count: 'exact', head: true });
+                .select('*', { count: 'exact', head: true })
+                .eq('tenant_id', currentProfile.tenant_id);
 
-            // Count unique departments (active users only, normalized)
+            // Count unique departments (active users only, normalized, tenant filtered)
             const { data: usersData } = await supabase
                 .from('users')
                 .select('department')
+                .eq('tenant_id', currentProfile.tenant_id)
                 .or('is_active.is.null,is_active.eq.true')
                 .not('department', 'is', null);
 
@@ -169,10 +212,23 @@ export default function EmployeeManagement() {
 
     const fetchDepartments = async () => {
         try {
-            // Fetch all active employees with departments
+            // Get current user's tenant for filtering
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return;
+
+            const { data: currentProfile } = await supabase
+                .from('users')
+                .select('tenant_id')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (!currentProfile?.tenant_id) return;
+
+            // Fetch all active employees with departments (tenant filtered)
             const { data: usersData } = await supabase
                 .from('users')
                 .select('department')
+                .eq('tenant_id', currentProfile.tenant_id)
                 .or('is_active.is.null,is_active.eq.true')
                 .not('department', 'is', null);
 

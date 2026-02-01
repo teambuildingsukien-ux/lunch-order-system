@@ -25,16 +25,22 @@ export async function POST(request: NextRequest) {
 
     console.log('[PAYOS] Received webhook:', webhookData);
 
-    // Verify webhook signature
-    try {
-        const verifiedData = await verifyWebhookSignature(webhookData);
-        console.log('[PAYOS] Webhook verified successfully');
-    } catch (error) {
-        console.error('[PAYOS] Invalid webhook signature:', error);
-        return NextResponse.json(
-            { error: 'Invalid signature' },
-            { status: 401 }
-        );
+    // Verify webhook signature (skip in development for testing)
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    if (!isDevelopment) {
+        try {
+            const verifiedData = await verifyWebhookSignature(webhookData);
+            console.log('[PAYOS] Webhook verified successfully');
+        } catch (error) {
+            console.error('[PAYOS] Invalid webhook signature:', error);
+            return NextResponse.json(
+                { error: 'Invalid signature' },
+                { status: 401 }
+            );
+        }
+    } else {
+        console.log('[PAYOS] ⚠️  Development mode - Skipping signature verification');
     }
 
     // Use admin client to bypass RLS

@@ -131,8 +131,17 @@ export default function DashboardHeader({
 
 
                     <div className="flex items-center gap-3">
-
-
+                        {/* Upgrade/Billing Button - Only for Admin/HR */}
+                        {(userRole === 'admin' || userRole === 'hr') && (
+                            <button
+                                onClick={() => router.push('/billing')}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B24700] to-[#D65D0E] hover:from-[#8F3900] hover:to-[#B24700] text-white font-bold transition-all shadow-md hover:shadow-lg shadow-primary/30 group"
+                                title="Quản lý gói dịch vụ"
+                            >
+                                <Icon name="workspace_premium" className="text-[20px] group-hover:scale-110 transition-transform" />
+                                <span className="text-sm">Nâng cấp</span>
+                            </button>
+                        )}
                     </div>
 
                     <div className="relative">

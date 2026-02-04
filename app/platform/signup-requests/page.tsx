@@ -36,10 +36,10 @@ export default function PlatformSignupRequestsPage() {
     async function loadRequests() {
         setLoading(true);
         try {
-            const data = await fetchSignupRequests(
-                statusFilter === 'all' ? undefined : statusFilter,
-                search || undefined
-            );
+            const data = await fetchSignupRequests({
+                status: statusFilter === 'all' ? undefined : statusFilter,
+                search: search || undefined
+            });
             setRequests(data);
         } catch (error) {
             console.error('Failed to load requests:', error);

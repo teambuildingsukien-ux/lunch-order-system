@@ -251,6 +251,7 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
 
             // Enhanced log activity for audit trail and penalty tracking
             await supabase.from('activity_logs').insert({
+                tenant_id: profile.tenant_id,  // REQUIRED for RLS
                 action: newStatus === 'eating' ? 'meal_registration' : 'meal_cancellation',
                 performed_by: profile.id,
                 target_type: 'order',

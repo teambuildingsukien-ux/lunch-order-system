@@ -100,9 +100,21 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Get current user's tenant_id
+        const { data: currentProfile } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!currentProfile?.tenant_id) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 403 });
+        }
+
         const { data, error } = await supabase
             .from('groups')
             .insert({
+                tenant_id: currentProfile.tenant_id,  // REQUIRED for RLS
                 name,
                 shift_id: shift_id || null,
                 table_area: table_area || null,

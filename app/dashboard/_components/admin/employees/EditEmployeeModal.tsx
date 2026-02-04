@@ -197,9 +197,22 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
 
             // Handle custom meal group creation
             if (formData.groupId === 'custom') {
+                // Get current user's tenant_id first
+                const { data: { user: currentUser } } = await supabase.auth.getUser();
+                if (!currentUser) throw new Error('Not authenticated');
+
+                const { data: currentProfile } = await supabase
+                    .from('users')
+                    .select('tenant_id')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (!currentProfile) throw new Error('User profile not found');
+
                 const { data: newGroup, error: groupError } = await supabase
                     .from('groups') // Use existing 'groups' table
                     .insert({
+                        tenant_id: currentProfile.tenant_id,  // REQUIRED for RLS
                         name: customValues.mealGroupName,
                         table_area: customValues.mealGroupTableArea,
                         department: finalDepartment,
@@ -230,23 +243,32 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
             // Step 3: Log activity
             const { data: { user: currentUser } } = await supabase.auth.getUser();
             if (currentUser) {
-                await supabase.from('activity_logs').insert({
-                    action: 'UPDATE_USER',
-                    performed_by: currentUser.id,
-                    target_type: 'user',
-                    target_id: employee.id,
-                    details: {
-                        changes: {
-                            full_name: formData.fullName,
-                            role: formData.role,
-                            group_id: finalGroupId,
-                            employee_code: formData.employeeCode,
-                            department: finalDepartment,
-                            shift: finalShift,
-                            is_custom_meal_group: formData.groupId === 'custom'
+                const { data: adminProfile } = await supabase
+                    .from('users')
+                    .select('tenant_id')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (adminProfile) {
+                    await supabase.from('activity_logs').insert({
+                        tenant_id: adminProfile.tenant_id,  // REQUIRED for RLS
+                        action: 'UPDATE_USER',
+                        performed_by: currentUser.id,
+                        target_type: 'user',
+                        target_id: employee.id,
+                        details: {
+                            changes: {
+                                full_name: formData.fullName,
+                                role: formData.role,
+                                group_id: finalGroupId,
+                                employee_code: formData.employeeCode,
+                                department: finalDepartment,
+                                shift: finalShift,
+                                is_custom_meal_group: formData.groupId === 'custom'
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
 
             // Success!

@@ -37,17 +37,26 @@ export default function DeleteConfirmModal({ isOpen, onClose, onSuccess, employe
 
             // Log activity before deleting
             if (currentUser) {
-                await supabase.from('activity_logs').insert({
-                    action: 'DELETE_USER',
-                    performed_by: currentUser.id,
-                    target_type: 'user',
-                    target_id: employee.id,
-                    details: {
-                        email: employee.email,
-                        full_name: employee.full_name,
-                        role: employee.role
-                    }
-                });
+                const { data: adminProfile } = await supabase
+                    .from('users')
+                    .select('tenant_id')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (adminProfile) {
+                    await supabase.from('activity_logs').insert({
+                        tenant_id: adminProfile.tenant_id,  // REQUIRED for RLS
+                        action: 'DELETE_USER',
+                        performed_by: currentUser.id,
+                        target_type: 'user',
+                        target_id: employee.id,
+                        details: {
+                            email: employee.email,
+                            full_name: employee.full_name,
+                            role: employee.role
+                        }
+                    });
+                }
             }
 
             // HARD DELETE: Xóa hẳn user khỏi database

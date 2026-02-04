@@ -103,12 +103,24 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Get admin's tenant_id first (for groups, users, and activity_logs)
+        const { data: adminProfile } = await supabaseAdmin
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!adminProfile || !adminProfile.tenant_id) {
+            return NextResponse.json({ error: 'Admin profile not found' }, { status: 400 });
+        }
+
         let finalGroupId = mealGroupId;
         // Handle Group
         if (mealGroupId === 'custom' && customValues?.mealGroupName) {
             const { data: newGroup, error: groupError } = await supabaseAdmin
                 .from('groups')
                 .insert({
+                    tenant_id: adminProfile.tenant_id,  // REQUIRED for RLS
                     name: customValues.mealGroupName,
                     table_area: customValues.mealGroupTableArea,
                     department: finalDepartment,
@@ -133,6 +145,7 @@ export async function POST(req: NextRequest) {
                 shift: finalShiftName,
                 department: finalDepartment,
                 group_id: (finalGroupId === 'custom' || !finalGroupId) ? null : finalGroupId,
+                tenant_id: adminProfile.tenant_id,  // REQUIRED for RLS
                 is_active: true
             });
 
@@ -142,18 +155,21 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: upsertError.message }, { status: 400 });
         }
 
-        // 7. Log Activity
-        await supabaseAdmin.from('activity_logs').insert({
-            action: 'CREATE_USER',
-            performed_by: user.id,
-            target_type: 'user',
-            target_id: userId,
-            details: {
-                email: email,
-                role: role,
-                created_via: 'admin_api'
-            }
-        });
+        // 7. Log Activity (reuse adminProfile from above)
+        if (adminProfile) {
+            await supabaseAdmin.from('activity_logs').insert({
+                tenant_id: adminProfile.tenant_id,  // REQUIRED for RLS
+                action: 'CREATE_USER',
+                performed_by: user.id,
+                target_type: 'user',
+                target_id: userId,
+                details: {
+                    email: email,
+                    role: role,
+                    created_via: 'admin_api'
+                }
+            });
+        }
 
         return NextResponse.json({ success: true, userId: userId });
 

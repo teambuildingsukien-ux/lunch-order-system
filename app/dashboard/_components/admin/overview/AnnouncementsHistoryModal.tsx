@@ -51,9 +51,33 @@ export default function AnnouncementsHistoryModal({ isOpen, onClose }: Announcem
         if (!newContent.trim()) return;
         setIsSubmitting(true);
 
+        // Get current user and tenant_id
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            showToast('Vui lòng đăng nhập lại', 'error');
+            setIsSubmitting(false);
+            return;
+        }
+
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!userProfile) {
+            showToast('Không tìm thấy thông tin người dùng', 'error');
+            setIsSubmitting(false);
+            return;
+        }
+
         const { error } = await supabase
             .from('announcements')
-            .insert({ content: newContent.trim(), active: true });
+            .insert({
+                tenant_id: userProfile.tenant_id,  // REQUIRED for RLS
+                content: newContent.trim(),
+                active: true
+            });
 
         if (error) {
             showToast('Lỗi thêm thông báo', 'error');

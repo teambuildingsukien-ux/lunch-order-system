@@ -29,9 +29,24 @@ export async function GET() {
         if (error) {
             // If order doesn't exist, create it (auto-create logic)
             if (error.code === 'PGRST116') {
+                // Get user's tenant_id REQUIRED for RLS
+                const { data: userProfile } = await supabase
+                    .from('users')
+                    .select('tenant_id')
+                    .eq('id', user.id)
+                    .single()
+
+                if (!userProfile?.tenant_id) {
+                    return NextResponse.json(
+                        { code: 'ERR_FORBIDDEN', message: 'Tenant not found' },
+                        { status: 403 }
+                    )
+                }
+
                 const { data: newOrder, error: createError } = await supabase
                     .from('orders')
                     .insert({
+                        tenant_id: userProfile.tenant_id,  // REQUIRED for RLS
                         user_id: user.id,
                         date: today,
                         status: 'eating', // Default status

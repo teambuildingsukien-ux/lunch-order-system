@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateSlug } from '@/lib/utils/slug';
+import CompanyInfoForm, { CompanyInfo } from './_components/CompanyInfoForm';
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -16,6 +17,7 @@ export default function SignupPage() {
     const [error, setError] = useState('');
 
     // Form data
+    const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
     const [orgName, setOrgName] = useState('');
     const [orgSlug, setOrgSlug] = useState('');
     const [adminEmail, setAdminEmail] = useState('');
@@ -94,6 +96,7 @@ export default function SignupPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    company: companyInfo,
                     organization: {
                         name: orgName,
                         slug: orgSlug,
@@ -113,8 +116,8 @@ export default function SignupPage() {
                 return;
             }
 
-            // Success! Go to step 4 (success message)
-            setStep(4);
+            // Success! Go to step 5 (email verification)
+            setStep(5);
         } catch (err) {
             console.error('Signup error:', err);
             setError('Lỗi kết nối. Vui lòng thử lại.');
@@ -125,7 +128,8 @@ export default function SignupPage() {
 
     const nextStep = () => {
         setError('');
-        if (step === 1) {
+        // Step 1 (Company Info) validation handled by CompanyInfoForm
+        if (step === 2) {
             if (!orgName || !orgSlug) {
                 setError('Vui lòng điền đầy đủ thông tin tổ chức');
                 return;
@@ -135,7 +139,7 @@ export default function SignupPage() {
                 return;
             }
         }
-        if (step === 2) {
+        if (step === 3) {
             if (!adminEmail || !adminPassword || !adminName) {
                 setError('Vui lòng điền đầy đủ thông tin admin');
                 return;
@@ -171,23 +175,23 @@ export default function SignupPage() {
                 </div>
 
                 {/* Progress Steps */}
-                {step < 4 && (
+                {step < 5 && (
                     <div className="flex justify-center mb-8">
-                        {[1, 2, 3].map((s) => (
+                        {[1, 2, 3, 4].map((s) => (
                             <div key={s} className="flex items-center">
                                 <div
                                     className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${step >= s
-                                            ? 'bg-[#c04b00] text-white'
-                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                                        ? 'bg-[#c04b00] text-white'
+                                        : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
                                         }`}
                                 >
                                     {s}
                                 </div>
-                                {s < 3 && (
+                                {s < 4 && (
                                     <div
                                         className={`w-16 h-1 mx-2 ${step > s
-                                                ? 'bg-[#c04b00]'
-                                                : 'bg-slate-200 dark:bg-slate-700'
+                                            ? 'bg-[#c04b00]'
+                                            : 'bg-slate-200 dark:bg-slate-700'
                                             }`}
                                     />
                                 )}
@@ -198,8 +202,21 @@ export default function SignupPage() {
 
                 {/* Main Card */}
                 <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8">
-                    {/* Step 1: Organization Info */}
+                    {/* Step 1: Company Info */}
                     {step === 1 && (
+                        <CompanyInfoForm
+                            onNext={(data) => {
+                                setCompanyInfo(data);
+                                setAdminEmail(data.contact_email);
+                                setAdminName(data.contact_name);
+                                nextStep();
+                            }}
+                            initialData={companyInfo || undefined}
+                        />
+                    )}
+
+                    {/* Step 2: Organization Info */}
+                    {step === 2 && (
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
                                 Thông tin tổ chức
@@ -250,8 +267,8 @@ export default function SignupPage() {
                         </div>
                     )}
 
-                    {/* Step 2: Admin Account */}
-                    {step === 2 && (
+                    {/* Step 3: Admin Account */}
+                    {step === 3 && (
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
                                 Tài khoản quản trị viên
@@ -315,8 +332,8 @@ export default function SignupPage() {
                         </div>
                     )}
 
-                    {/* Step 3: Confirmation */}
-                    {step === 3 && (
+                    {/* Step 4: Confirmation */}
+                    {step === 4 && (
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
                                 Xác nhận thông tin
@@ -348,20 +365,25 @@ export default function SignupPage() {
                         </div>
                     )}
 
-                    {/* Step 4: Success */}
-                    {step === 4 && (
+                    {/* Step 5: Email Verification Required */}
+                    {step === 5 && (
                         <div className="text-center py-8">
                             <div className="mb-6">
-                                <Icon name="check_circle" className="text-[80px] text-green-500" />
+                                <Icon name="mark_email_unread" className="text-[80px] text-orange-500" />
                             </div>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
-                                Đăng ký thành công!
+                                Vui lòng xác nhận email!
                             </h2>
                             <p className="text-slate-600 dark:text-slate-400 mb-6">
                                 Chúng tôi đã gửi email xác thực đến <strong>{adminEmail}</strong>
                                 <br />
-                                Vui lòng kiểm tra hộp thư và click vào link để kích hoạt tài khoản.
+                                Vui lòng kiểm tra hộp thư và click vào link để kích hoạt email.
                             </p>
+                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-4 mb-6">
+                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                    ⚠️ Sau khi xác nhận email, tài khoản của bạn sẽ được admin platform duyệt trước khi có thể sử dụng.
+                                </p>
+                            </div>
                             <button
                                 onClick={() => router.push('/login')}
                                 className="bg-[#c04b00] hover:bg-[#a03e00] text-white px-8 py-3 rounded-xl font-bold transition-all"
@@ -372,7 +394,7 @@ export default function SignupPage() {
                     )}
 
                     {/* Error Message */}
-                    {error && step < 4 && (
+                    {error && step < 5 && (
                         <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2">
                             <Icon name="error" className="text-red-500 text-[20px] mt-0.5" />
                             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
@@ -380,7 +402,7 @@ export default function SignupPage() {
                     )}
 
                     {/* Navigation Buttons */}
-                    {step < 4 && (
+                    {step < 5 && step !== 1 && (
                         <div className="flex items-center justify-between mt-8">
                             {step > 1 && (
                                 <button
@@ -392,7 +414,7 @@ export default function SignupPage() {
                                     Quay lại
                                 </button>
                             )}
-                            {step < 3 && (
+                            {step < 4 && (
                                 <button
                                     onClick={nextStep}
                                     disabled={loading}
@@ -402,7 +424,7 @@ export default function SignupPage() {
                                     <Icon name="arrow_forward" className="text-[20px]" />
                                 </button>
                             )}
-                            {step === 3 && (
+                            {step === 4 && (
                                 <button
                                     onClick={handleSignup}
                                     disabled={loading}
@@ -426,7 +448,7 @@ export default function SignupPage() {
                 </div>
 
                 {/* Login Link */}
-                {step < 4 && (
+                {step < 5 && (
                     <div className="text-center mt-6">
                         <p className="text-slate-600 dark:text-slate-400">
                             Đã có tài khoản?{' '}

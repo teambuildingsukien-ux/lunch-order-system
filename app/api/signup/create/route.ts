@@ -10,7 +10,7 @@ import { calculateTrialEnd } from '@/lib/utils/trial';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { organization, admin } = body;
+        const { company, organization, admin } = body;
 
         // Validate required fields
         if (!organization?.name || !organization?.slug) {
@@ -23,6 +23,14 @@ export async function POST(request: NextRequest) {
         if (!admin?.email || !admin?.password || !admin?.full_name) {
             return NextResponse.json(
                 { error: 'Thông tin admin không đầy đủ' },
+                { status: 400 }
+            );
+        }
+
+        // Validate company info (required)
+        if (!company?.company_name || !company?.contact_name || !company?.contact_email) {
+            return NextResponse.json(
+                { error: 'Thông tin công ty không đầy đủ' },
                 { status: 400 }
             );
         }
@@ -68,8 +76,10 @@ export async function POST(request: NextRequest) {
                 slug: organization.slug,
                 trial_ends_at: trialEndsAt.toISOString(),
                 subscription_status: 'trialing',
-                is_active: true,
+                is_active: false, // Inactive until approved
                 status: 'trial',
+                approval_status: 'pending_approval', // NEW: Requires approval
+                email_verified: false, // NEW: Requires email verification
             })
             .select()
             .single();
@@ -144,7 +154,31 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Step 4: Send verification email
+        // Step 4: Create signup request record
+        const { error: signupRequestError } = await supabase
+            .from('tenant_signup_requests')
+            .insert({
+                tenant_id: tenant.id,
+                company_name: company.company_name,
+                company_address: company.company_address || null,
+                company_phone: company.company_phone || null,
+                company_website: company.company_website || null,
+                employee_count: company.employee_count,
+                contact_name: company.contact_name,
+                contact_title: company.contact_title || null,
+                contact_email: company.contact_email,
+                contact_phone: company.contact_phone || null,
+                signup_source: company.signup_source || 'website',
+                status: 'pending', // Waiting for email verification + admin approval
+                email_verified: false,
+            });
+
+        if (signupRequestError) {
+            console.error('Signup request creation error:', signupRequestError);
+            // Non-critical error, continue (we still have the tenant and user)
+        }
+
+        // Step 5: Send verification email
         // Note: Supabase Auth automatically sends confirmation email if SMTP is configured
         // If using custom email service (Resend), implement here
 
@@ -164,11 +198,12 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            message: 'Tổ chức đã được tạo thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+            message: 'Tổ chức đã được tạo thành công! Vui lòng kiểm tra email để xác thực tài khoản và chờ admin phê duyệt.',
             tenant: {
                 id: tenant.id,
                 name: tenant.name,
                 slug: tenant.slug,
+                status: tenant.approval_status, // pending_approval
             },
             admin: {
                 id: authUser.user.id,

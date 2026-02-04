@@ -136,23 +136,11 @@ export async function POST(request: NextRequest) {
             // Non-critical error, continue
         }
 
-        // Step 7: Log activity (optional)
-        const { error: logError } = await supabase
-            .from('activity_logs')
-            .insert({
-                action: 'auto_reset_meals',
-                performed_by: '00000000-0000-0000-0000-000000000000', // System user
-                details: {
-                    reset_count: resetCount,
-                    reset_time: resetTime,
-                    executed_at: now.toISOString(),
-                },
-            });
-
-        if (logError) {
-            console.error('Failed to log activity:', logError);
-            // Non-critical error, continue
-        }
+        // Step 7: Log activity - SKIPPED
+        // NOTE: activity_logs table has NOT NULL constraint on tenant_id
+        // System cron jobs don't have tenant context, so we skip audit logging
+        // Console logs are sufficient for system operations
+        console.log(`📋 Activity: auto_reset_meals completed with ${resetCount} orders reset`);
 
         console.log('🎉 Auto-reset completed successfully');
 

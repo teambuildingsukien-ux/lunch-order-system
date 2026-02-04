@@ -82,10 +82,20 @@ export default function UrgentNotificationModal({
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
+            // Get user's tenant_id
+            const { data: userProfile } = await supabase
+                .from('users')
+                .select('tenant_id')
+                .eq('id', user.id)
+                .single();
+
+            if (!userProfile) throw new Error('User profile not found');
+
             // Insert notification
             const { error: insertError } = await supabase
                 .from('urgent_notifications')
                 .insert({
+                    tenant_id: userProfile.tenant_id,  // REQUIRED for RLS
                     title: title.trim(),
                     message: message.trim(),
                     target_audience: targetAudience,
@@ -100,6 +110,7 @@ export default function UrgentNotificationModal({
             await supabase
                 .from('activity_logs')
                 .insert({
+                    tenant_id: userProfile.tenant_id,  // REQUIRED for RLS
                     action: 'SEND_URGENT_NOTIFICATION',
                     performed_by: user.id,
                     target_type: 'notification',
@@ -217,8 +228,8 @@ export default function UrgentNotificationModal({
                                 type="button"
                                 onClick={() => setTargetAudience('all')}
                                 className={`p-3 rounded-lg border-2 text-sm font-semibold transition-all ${targetAudience === 'all'
-                                        ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
-                                        : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
+                                    ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
+                                    : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
                                     }`}
                             >
                                 <Icon name="groups" className="block mb-1" />
@@ -228,8 +239,8 @@ export default function UrgentNotificationModal({
                                 type="button"
                                 onClick={() => setTargetAudience('employees')}
                                 className={`p-3 rounded-lg border-2 text-sm font-semibold transition-all ${targetAudience === 'employees'
-                                        ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
-                                        : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
+                                    ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
+                                    : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
                                     }`}
                             >
                                 <Icon name="badge" className="block mb-1" />
@@ -239,8 +250,8 @@ export default function UrgentNotificationModal({
                                 type="button"
                                 onClick={() => setTargetAudience('kitchen')}
                                 className={`p-3 rounded-lg border-2 text-sm font-semibold transition-all ${targetAudience === 'kitchen'
-                                        ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
-                                        : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
+                                    ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
+                                    : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
                                     }`}
                             >
                                 <Icon name="restaurant" className="block mb-1" />
@@ -250,8 +261,8 @@ export default function UrgentNotificationModal({
                                 type="button"
                                 onClick={() => setTargetAudience('group')}
                                 className={`p-3 rounded-lg border-2 text-sm font-semibold transition-all ${targetAudience === 'group'
-                                        ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
-                                        : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
+                                    ? 'border-[#c04b00] bg-[#c04b00]/10 text-[#c04b00]'
+                                    : 'border-[#dbdfe6] dark:border-slate-700 text-[#606e8a] hover:border-[#c04b00]/50'
                                     }`}
                             >
                                 <Icon name="workspaces" className="block mb-1" />

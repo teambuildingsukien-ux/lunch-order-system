@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/providers/toast-provider';
 import DashboardHeader from '@/app/dashboard/_components/DashboardHeader';
 import ForecastCards from '@/app/dashboard/_components/admin/ForecastCards';
+import { toLocalDateString } from '@/lib/utils/date-helpers';
 
 
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -50,9 +51,12 @@ export default function KitchenDashboard({ hideHeader = false }: KitchenDashboar
     const [stats, setStats] = useState<DailyStats>({ total: 0, eating: 0, not_eating: 0, pending: 0 });
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [groupStats, setGroupStats] = useState<GroupStat[]>([]);
+
+    // ...
+
     const [currentGroupPage, setCurrentGroupPage] = useState(0);
     const [selectedDepartment, setSelectedDepartment] = useState('all');
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(toLocalDateString(new Date()));
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const itemsPerPage = 20;

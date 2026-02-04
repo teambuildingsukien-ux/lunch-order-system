@@ -48,18 +48,18 @@ export default function BreakdownModal({ date, dayName, onClose }: BreakdownModa
             const { data: allUsers } = await supabase
                 .from('users')
                 .select('id, department, shift')
-                .eq('active', true);
+                .eq('is_active', true);
 
             if (!allUsers) return;
 
-            // Get all orders for tomorrow
+            // Get all orders for tomorrow (specifically who said NOT EATING)
             const { data: orders } = await supabase
                 .from('orders')
                 .select('user_id, status')
                 .eq('date', isoDate)
-                .eq('status', 'eating');
+                .eq('status', 'not_eating');
 
-            const orderUserIds = new Set(orders?.map(o => o.user_id) || []);
+            const notEatingUserIds = new Set(orders?.map(o => o.user_id) || []);
 
             // Group by department
             const deptMap = new Map<string, { total: number; registered: number }>();
@@ -71,7 +71,8 @@ export default function BreakdownModal({ date, dayName, onClose }: BreakdownModa
                 }
                 const deptData = deptMap.get(dept)!;
                 deptData.total++;
-                if (orderUserIds.has(user.id)) {
+                // Implicit Eating: If NOT in "not_eating" list => Registered
+                if (!notEatingUserIds.has(user.id)) {
                     deptData.registered++;
                 }
             });
@@ -91,7 +92,7 @@ export default function BreakdownModal({ date, dayName, onClose }: BreakdownModa
             const shiftMap = new Map<string, number>();
 
             allUsers.forEach(user => {
-                if (orderUserIds.has(user.id)) {
+                if (!notEatingUserIds.has(user.id)) {
                     const shift = user.shift || 'Chưa có ca';
                     shiftMap.set(shift, (shiftMap.get(shift) || 0) + 1);
                 }

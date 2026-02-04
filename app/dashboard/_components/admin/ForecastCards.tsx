@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import BreakdownModal from './BreakdownModal';
+import { toLocalDateString } from '@/lib/utils/date-helpers';
 
 interface ForecastData {
     registered: number;
@@ -40,7 +41,7 @@ export default function ForecastCards() {
             // Calculate tomorrow's date
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowDate = tomorrow.toISOString().split('T')[0];
+            const tomorrowDate = toLocalDateString(tomorrow);
 
             // Get Vietnamese day name
             const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -89,19 +90,19 @@ export default function ForecastCards() {
             const { count: totalEmployees } = await supabase
                 .from('users')
                 .select('*', { count: 'exact', head: true })
-                .eq('active', true);
+                .eq('is_active', true);
 
-            // Get employees registered for tomorrow (status = 'eating')
-            const { count: registeredCount } = await supabase
+            // Get employees who reported 'not_eating' for tomorrow
+            const { count: notEatingCount } = await supabase
                 .from('orders')
-                .select('user_id, users!inner(active)', { count: 'exact', head: true })
+                .select('user_id, users!inner(is_active)', { count: 'exact', head: true })
                 .eq('date', tomorrowDate)
-                .eq('status', 'eating')
-                .eq('users.active', true);
+                .eq('status', 'not_eating')
+                .eq('users.is_active', true);
 
-            const registered = registeredCount || 0;
             const total = totalEmployees || 0;
-            const notRegistered = total - registered;
+            const notRegistered = notEatingCount || 0; // This is "Báo nghỉ"
+            const registered = total > 0 ? total - notRegistered : 0; // This is "Sẽ ăn"
 
             setForecast({
                 registered,
@@ -218,7 +219,7 @@ export default function ForecastCards() {
 
                 <p className="text-xs text-orange-600 dark:text-orange-500 mb-3 flex items-center gap-1">
                     <Icon name="warning" className="text-[16px]" />
-                    Chưa đăng ký
+                    Báo nghỉ
                 </p>
 
                 <div className="mb-3">

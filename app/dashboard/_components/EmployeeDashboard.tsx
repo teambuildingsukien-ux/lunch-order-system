@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/providers/toast-provider';
 import DashboardHeader from './DashboardHeader';
 import BulkRegistrationCalendar from './BulkRegistrationCalendar';
+import { toLocalDateString } from '@/lib/utils/date-helpers';
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -124,7 +125,10 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                 setGroupInfo(currentGroupInfo);
 
 
-                const today = new Date().toISOString().split('T')[0];
+                setGroupInfo(currentGroupInfo);
+
+
+                const today = toLocalDateString(new Date());
                 const { data: orderData } = await supabase
                     .from('orders')
                     .select('status')
@@ -165,8 +169,8 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
                     .limit(5);
                 setAnnouncements(announcementsData || []);
 
-                const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-                const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+                const startOfMonth = toLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+                const endOfMonth = toLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
                 const { data: monthlyOrders } = await supabase
                     .from('orders')
                     .select('status')
@@ -211,7 +215,7 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
             if (!profile) return;
 
             const newStatus = orderStatus === 'eating' ? 'not_eating' : 'eating';
-            const today = new Date().toISOString().split('T')[0];
+            const today = toLocalDateString(new Date());
 
             const { error } = await supabase
                 .from('orders')
@@ -239,7 +243,8 @@ export default function EmployeeDashboard({ hideHeader = false }: EmployeeDashbo
             // Calculate actual deadline datetime for THIS meal (deadline is for NEXT day's meal)
             const targetDate = new Date(today);
             targetDate.setDate(targetDate.getDate() + deadlineOffsetDays);
-            const deadlineDateTime = new Date(targetDate.toISOString().split('T')[0] + 'T' + deadlineTime + ':00+07:00');
+            const targetDateStr = toLocalDateString(targetDate);
+            const deadlineDateTime = new Date(targetDateStr + 'T' + deadlineTime + ':00+07:00');
 
             const currentTime = new Date();
             const isLateAction = currentTime > deadlineDateTime && newStatus === 'not_eating';

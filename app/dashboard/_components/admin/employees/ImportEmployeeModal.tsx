@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import { toLocalDateString } from '@/lib/utils/date-helpers';
 
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
     <span className={`material-symbols-outlined ${className}`}>{name}</span>
@@ -428,7 +429,7 @@ export default function ImportEmployeeModal({ isOpen, onClose, onSuccess }: Impo
         XLSX.utils.book_append_sheet(wb, instructionSheet, "Huong_Dan_Chi_Tiet");
 
         // Download file with timestamp
-        const timestamp = new Date().toISOString().split('T')[0];
+        const timestamp = toLocalDateString(new Date());
         XLSX.writeFile(wb, `Mau_Nhap_Nhan_Vien_${timestamp}.xlsx`);
     };
 

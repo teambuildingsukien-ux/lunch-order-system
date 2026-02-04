@@ -16,27 +16,40 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Use admin client to bypass RLS
+        // Get current user's tenant_id for filtering
+        const { data: currentProfile } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!currentProfile?.tenant_id) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 403 });
+        }
+
+        // Use admin client with tenant filtering
         const adminClient = createAdminClient();
 
-        // Fetch groups with shift relation
+        // Fetch groups with shift relation, filtered by tenant
         const { data: groups, error } = await adminClient
             .from('groups')
             .select(`
                 *,
                 shift:shifts (*)
             `)
+            .eq('tenant_id', currentProfile.tenant_id) // ✅ TENANT ISOLATION
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        // Get member counts for each group
+        // Get member counts for each group (tenant already filtered from groups)
         const groupsWithCounts = await Promise.all(
             (groups || []).map(async (group) => {
                 const { count } = await adminClient
                     .from('users')
                     .select('*', { count: 'exact', head: true })
-                    .eq('group_id', group.id);
+                    .eq('group_id', group.id)
+                    .eq('tenant_id', currentProfile.tenant_id); // ✅ DOUBLE-CHECK TENANT
 
                 return {
                     ...group,

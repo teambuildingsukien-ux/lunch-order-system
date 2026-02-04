@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { type NextRequest } from 'next/server'
+import { getVietnamDateString } from '@/lib/utils/date-helpers';
 
 export async function GET(request: NextRequest) {
     const supabase = await createClient()
@@ -30,17 +31,26 @@ export async function GET(request: NextRequest) {
             )
         }
 
+        // ... (inside GET)
+
         // Calculate date range
-        const today = new Date()
-        const startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - days)
+        // For server-side, ensuring consistent "Today" in Vietnam Time
+        const todayStr = getVietnamDateString();
+        const endDate = new Date(todayStr); // 00:00 VN Time roughly (but object is local/UTC, doesn't matter as long as we shift)
+
+        // Actually simplest is: filter by string comparison
+        // If we want "Last 30 days" INCLUDING today:
+        // We need a date N days ago. 
+        const d = new Date(todayStr);
+        d.setDate(d.getDate() - days);
+        const startDateStr = getVietnamDateString(d);
 
         // Fetch orders with pagination
         const { data: orders, error, count } = await supabase
             .from('orders')
             .select('*', { count: 'exact' })
             .eq('user_id', user.id)
-            .gte('date', startDate.toISOString().split('T')[0])
+            .gte('date', startDateStr)
             .order('date', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
 

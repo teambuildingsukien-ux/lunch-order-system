@@ -16,13 +16,25 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Use admin client to bypass RLS
+        // Get current user's tenant_id for filtering
+        const { data: currentProfile } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!currentProfile?.tenant_id) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 403 });
+        }
+
+        // Use admin client with tenant filtering
         const adminClient = createAdminClient();
         const { data, error } = await adminClient
             .from('users')
             .select('id, full_name, email, employee_code, department, avatar_url, role, group_id')
-            // Show ALL employees, modal will handle disabling assigned ones
+            // Show employees from SAME TENANT only
             .eq('role', 'employee')
+            .eq('tenant_id', currentProfile.tenant_id) // ✅ TENANT ISOLATION
             .order('full_name', { ascending: true });
 
         if (error) throw error;

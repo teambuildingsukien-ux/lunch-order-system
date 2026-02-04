@@ -16,6 +16,7 @@ import ActivityHistoryModal from './overview/ActivityHistoryModal';
 import ActivityLogsPage from './activitylogs/ActivityLogsPage';
 import AutoResetSettingModal from './overview/AutoResetSettingModal';
 import ForecastCards from './ForecastCards';
+import { toLocalDateString } from '@/lib/utils/date-helpers';
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -27,6 +28,7 @@ interface DashboardStats {
     totalRegistered: number;
     notRegistered: number;
     cancelRate: number;
+    trend?: number;
 }
 
 interface WeeklyData {
@@ -96,7 +98,7 @@ export default function AdminManagerDashboard() {
     const ITEMS_PER_PAGE = 10;
 
     // Filter state
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(toLocalDateString(new Date()));
     const [statusFilter, setStatusFilter] = useState<'all' | 'eating' | 'not_eating' | 'not_registered'>('all');
 
     const [currentDate, setCurrentDate] = useState('');
@@ -117,7 +119,8 @@ export default function AdminManagerDashboard() {
         setCurrentDate(today.toLocaleDateString('vi-VN', options));
 
         // Force reset selectedDate to today (prevent browser autofill)
-        setSelectedDate(today.toISOString().split('T')[0]);
+        const todayStr = toLocalDateString(today);
+        setSelectedDate(todayStr);
 
         // Setup Realtime subscriptions
         const ordersChannel = supabase
@@ -185,14 +188,25 @@ export default function AdminManagerDashboard() {
     const fetchDashboardData = async () => {
         try {
             setIsLoading(true);
-            const today = new Date().toISOString().split('T')[0];
+            const today = toLocalDateString(new Date());
 
             // 1. Fetch today's stats
-            // Count "Not Eating" explicitly (Báo nghỉ)
+            // Count "Not Eating" explicitly (Báo nghỉ) for Today
             const { count: notEatingCount } = await supabase
                 .from('orders')
                 .select('*', { count: 'exact', head: true })
                 .eq('date', today)
+                .eq('status', 'not_eating');
+
+            // Count "Not Eating" for Yesterday (for Trend)
+            const yesterdayDate = new Date();
+            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+            const yesterday = toLocalDateString(yesterdayDate);
+
+            const { count: yesterdayNotEatingCount } = await supabase
+                .from('orders')
+                .select('*', { count: 'exact', head: true })
+                .eq('date', yesterday)
                 .eq('status', 'not_eating');
 
             // Count all users except kitchen staff
@@ -202,16 +216,23 @@ export default function AdminManagerDashboard() {
                 .not('role', 'ilike', 'kitchen');
 
             const totalEmployees = totalEmployeesCount || 14;
+
             // Registered = Total - Not Eating
             const totalRegistered = totalEmployees - (notEatingCount || 0);
 
             // Repurpose notRegistered to track "Reported Off" (Not Eating)
             const notRegistered = notEatingCount || 0;
 
+            // Calculate Rates
+            const todayRate = totalEmployees > 0 ? ((notRegistered / totalEmployees) * 100) : 0;
+            const yesterdayRate = totalEmployees > 0 ? (((yesterdayNotEatingCount || 0) / totalEmployees) * 100) : 0;
+            const trend = todayRate - yesterdayRate;
+
             setStats({
                 totalRegistered,
                 notRegistered,
-                cancelRate: 2.4
+                cancelRate: parseFloat(todayRate.toFixed(1)),
+                trend: parseFloat(trend.toFixed(1))
             });
             setTotalEmployees(totalEmployees);
 
@@ -220,7 +241,7 @@ export default function AdminManagerDashboard() {
             for (let i = 6; i >= 0; i--) {
                 const date = new Date();
                 date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = toLocalDateString(date);
                 const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
                 const dayName = dayNames[date.getDay()];
 
@@ -618,7 +639,7 @@ export default function AdminManagerDashboard() {
                                 {/* Stats Cards */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                                     {/* Card 1: Tổng đăng ký */}
-                                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm">
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800/30 shadow-sm hover:shadow-md transition-all">
                                         <div className="flex justify-between items-start mb-4">
                                             <p className="text-[#606e8a] text-sm font-medium">Tổng suất ăn hôm nay</p>
                                             <Icon name="how_to_reg" className="text-[#c04b00]" />
@@ -631,7 +652,7 @@ export default function AdminManagerDashboard() {
                                     </div>
 
                                     {/* Card 2: Chưa đăng ký */}
-                                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm">
+                                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-6 rounded-xl border border-amber-100 dark:border-amber-800/30 shadow-sm hover:shadow-md transition-all">
                                         <div className="flex justify-between items-start mb-4">
                                             <p className="text-[#606e8a] text-sm font-medium">Báo nghỉ / Không ăn</p>
                                             <Icon name="pending_actions" className="text-orange-500" />
@@ -644,16 +665,22 @@ export default function AdminManagerDashboard() {
                                     </div>
 
                                     {/* Card 3: Tỷ lệ hủy */}
-                                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm">
+                                    <div className="bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 p-6 rounded-xl border border-rose-100 dark:border-rose-800/30 shadow-sm hover:shadow-md transition-all">
                                         <div className="flex justify-between items-start mb-4">
                                             <p className="text-[#606e8a] text-sm font-medium">Tỷ lệ hủy</p>
                                             <Icon name="cancel" className="text-red-500" />
                                         </div>
                                         <div className="flex items-end gap-3">
-                                            <p className="text-3xl font-bold dark:text-white">2.4%</p>
-                                            <p className="text-[#07883b] text-sm font-semibold mb-1 flex items-center">
-                                                <Icon name="trending_up" className="text-[18px]" /> +0.5%
-                                            </p>
+                                            <p className="text-3xl font-bold dark:text-white">{stats.cancelRate}%</p>
+                                            <div className="flex flex-col mb-1">
+                                                {stats.trend !== undefined && (
+                                                    <p className={`text-sm font-semibold flex items-center ${stats.trend <= 0 ? 'text-[#07883b]' : 'text-red-500'}`}>
+                                                        <Icon name={stats.trend <= 0 ? "trending_down" : "trending_up"} className="text-[18px]" />
+                                                        {stats.trend > 0 ? '+' : ''}{stats.trend}%
+                                                    </p>
+                                                )}
+                                                <span className="text-[10px] text-slate-400 font-medium">so với hôm qua</span>
+                                            </div>
                                         </div>
                                     </div>
 

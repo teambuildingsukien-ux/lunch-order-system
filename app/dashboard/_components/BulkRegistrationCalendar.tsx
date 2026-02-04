@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { toLocalDateString } from '@/lib/utils/date-helpers';
+
 
 // Material Symbol Icon component
 const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
@@ -72,8 +74,8 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
             const lastDay = new Date(year, month + 1, 0);
 
             // Get all user's orders for this month
-            const firstDateStr = firstDay.toISOString().split('T')[0];
-            const lastDateStr = lastDay.toISOString().split('T')[0];
+            const firstDateStr = toLocalDateString(firstDay);
+            const lastDateStr = toLocalDateString(lastDay);
 
             const { data: orders } = await supabase
                 .from('orders')
@@ -94,9 +96,11 @@ export default function BulkRegistrationCalendar({ onClose }: BulkRegistrationCa
 
             const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
+            // ... (inside component)
+
             for (let d = 1; d <= lastDay.getDate(); d++) {
                 const date = new Date(year, month, d);
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = toLocalDateString(date);
                 const dayIndex = date.getDay();
 
                 // Check if it's a cooking day

@@ -156,9 +156,13 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
 
             // Handle Custom Shift Creation
             if (formData.shift === 'custom') {
+                // Validate shift name first
+                if (!customValues.shift.trim()) {
+                    throw new Error('Vui lòng nhập tên ca ăn');
+                }
                 // Validate time inputs
-                if (!customValues.shift || !customValues.shiftStartTime || !customValues.shiftEndTime) {
-                    throw new Error('Vui lòng nhập đầy đủ tên ca và khung giờ');
+                if (!customValues.shiftStartTime || !customValues.shiftEndTime) {
+                    throw new Error('Vui lòng nhập đầy đủ khung giờ cho ca ăn');
                 }
 
                 // Check if shift name already exists

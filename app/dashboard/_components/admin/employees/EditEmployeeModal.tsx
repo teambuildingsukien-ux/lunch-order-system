@@ -61,25 +61,21 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
     useEffect(() => {
         if (isOpen && employee) {
             const currentDept = (employee as any).department || '';
-            const currentShift = (employee as any).shift || '';
-            const currentGroup = (employee as any).group_id || ''; // Using group_id from user table
-
-            // Check if values are custom
-            const isCustomDept = currentDept && !StandardDepartments.includes(currentDept);
-            const isCustomShift = currentShift && !StandardShifts.includes(currentShift);
+            const currentShift = (employee as any).shift || ''; // Load shift NAME from database
+            const currentGroup = (employee as any).group_id || '';
 
             setFormData({
                 fullName: employee.full_name || '',
                 role: employee.role,
                 groupId: currentGroup,
                 employeeCode: (employee as any).employee_code || '',
-                shift: isCustomShift ? 'custom' : currentShift,
-                department: isCustomDept ? 'custom' : currentDept
+                shift: currentShift, // Set to shift NAME
+                department: currentDept
             });
 
             setCustomValues({
-                department: isCustomDept ? currentDept : '',
-                shift: isCustomShift ? currentShift : '',
+                department: '',
+                shift: '',
                 shiftStartTime: '',
                 shiftEndTime: '',
                 mealGroupName: '',
@@ -160,7 +156,7 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
                 if (!customValues.shift.trim()) {
                     throw new Error('Vui lòng nhập tên ca ăn');
                 }
-                // Validate time inputs
+                // Validate time inputs ONLY if creating custom shift
                 if (!customValues.shiftStartTime || !customValues.shiftEndTime) {
                     throw new Error('Vui lòng nhập đầy đủ khung giờ cho ca ăn');
                 }
@@ -192,11 +188,8 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
                     if (createdShift) finalShiftId = createdShift.id;
                 }
             } else {
-                // Existing shift selected
-                if (formData.shift) {
-                    const selectedShiftObj = shifts.find(s => s.name === formData.shift);
-                    if (selectedShiftObj) finalShiftId = selectedShiftObj.id;
-                }
+                // Existing shift selected - formData.shift contains shift NAME
+                // No action needed, finalShift already has the correct value
             }
 
             // Handle custom meal group creation
@@ -229,51 +222,42 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
                 finalGroupId = newGroup.id;
             }
 
-            // Step 1: Update user data (including group_id)
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({
+            // Step 1: Update user data via API endpoint
+            console.log('[EDIT_EMPLOYEE] Sending update request:', {
+                employeeId: employee.id,
+                changes: {
+                    full_name: formData.fullName,
+                    role: formData.role,
+                    employee_code: formData.employeeCode,
+                    shift_id: finalShiftId,
+                    department: finalDepartment,
+                    group_id: finalGroupId
+                }
+            });
+
+            const response = await fetch(`/api/admin/employees/${employee.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
                     full_name: formData.fullName,
                     role: formData.role,
                     employee_code: formData.employeeCode,
                     shift: finalShift,
                     department: finalDepartment,
-                    group_id: finalGroupId || null
-                })
-                .eq('id', employee.id);
+                    group_id: finalGroupId
+                }),
+            });
 
-            if (updateError) throw updateError;
+            const result = await response.json();
 
-            // Step 3: Log activity
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            if (currentUser) {
-                const { data: adminProfile } = await supabase
-                    .from('users')
-                    .select('tenant_id')
-                    .eq('id', currentUser.id)
-                    .single();
-
-                if (adminProfile) {
-                    await supabase.from('activity_logs').insert({
-                        tenant_id: adminProfile.tenant_id,  // REQUIRED for RLS
-                        action: 'UPDATE_USER',
-                        performed_by: currentUser.id,
-                        target_type: 'user',
-                        target_id: employee.id,
-                        details: {
-                            changes: {
-                                full_name: formData.fullName,
-                                role: formData.role,
-                                group_id: finalGroupId,
-                                employee_code: formData.employeeCode,
-                                department: finalDepartment,
-                                shift: finalShift,
-                                is_custom_meal_group: formData.groupId === 'custom'
-                            }
-                        }
-                    });
-                }
+            if (!response.ok) {
+                console.error('[EDIT_EMPLOYEE] API error:', result);
+                throw new Error(result.error || 'Failed to update employee');
             }
+
+            console.log('[EDIT_EMPLOYEE] ✅ Update successful:', result);
 
             // Success!
             onSuccess();
